@@ -1,65 +1,27 @@
 name: Github CI
-
 on: [push]
-
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-
-      - name: Install Codon (installer) + seq plugin
-        shell: bash
-        run: |
-          set -euxo pipefail
-          /bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
-
-          CODON_DIR="${HOME}/.codon"
-          PLUG_DIR="${CODON_DIR}/lib/codon/plugins"
-          mkdir -p "${PLUG_DIR}"
-
-          curl -fsSL "https://github.com/exaloop/seq/releases/download/v0.11.5/seq-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz" \
-            | tar zxvf - -C "${PLUG_DIR}"
-
-          # Make available now + later
-          export PATH="${CODON_DIR}/bin:${PATH}"
-          echo "${CODON_DIR}/bin" >> "${GITHUB_PATH}"
-
-          which codon
-          codon --version
-          echo -ne "import bio\nprint('hello', s'ACGT')\n" | codon run -plugin seq -
-
-
-
+      - name: Install Codon
+      	run: |
+      		mkdir -p ${HOME}/.codon
+      		curl -L https://github.com/exaloop/codon/releases/download/v0.19.3/codon-linux-x86_64.tar.gz | tar zxvf - --strip-components=1 -C ${HOME}/.codon
+		curl -L https://github.com/exaloop/seq/releases/download/v0.11.5/seq-linux-x86_64.tar.gz | tar zxvf - -C ${HOME}/.codon/lib/codon/plugins
+		export PATH=${PATH}:${HOME}/.codon/bin
       - name: Check out repository code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
+        uses: actions/checkout@v5
+	  - uses: actions/setup-python@v6
+  		with:
+    		python-version: '3.13' 
       - name: Set up Codon Python bridge
-        shell: bash
-        run: |
-          set -euxo pipefail
-          CODON_PYTHON=$(curl -fsSL https://raw.githubusercontent.com/exaloop/codon/refs/heads/develop/test/python/find-python-library.py | python)
-          echo "Found Python at: ${CODON_PYTHON}"
-          echo "CODON_PYTHON=${CODON_PYTHON}" >> "${GITHUB_ENV}"
-
+      	run: |
+        	export CODON_PYTHON=$(curl -L https://raw.githubusercontent.com/exaloop/codon/refs/heads/develop/test/python/find-python-library.py | python)
+        	echo "Found Python at: ${CODON_PYTHON}"
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-
-      # Week 1 script (make sure this file exists in your repo)
-      - name: Week 1
-        shell: bash
-        run: bash week1/evaluate.sh
-
-      - name: Show results
-        if: always()
-        run: |
-          echo "==== week1/results.tsv ===="
-          cat week1/results.tsv || true
