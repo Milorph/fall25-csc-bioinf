@@ -11,18 +11,18 @@ jobs:
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
 
-      - name: Install Codon & seq plugin
+      - name: Install Codon
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p "${HOME}/.codon"
-          curl -L https://github.com/exaloop/codon/releases/download/v0.19.3/codon-linux-x86_64.tar.gz \
-            | tar zxvf - --strip-components=1 -C "${HOME}/.codon"
+          /bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
           mkdir -p "${HOME}/.codon/lib/codon/plugins"
-          curl -L https://github.com/exaloop/seq/releases/download/v0.11.5/seq-linux_x86_64.tar.gz \
+          curl -L https://github.com/exaloop/seq/releases/download/v0.11.5/seq-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz \
             | tar zxvf - -C "${HOME}/.codon/lib/codon/plugins"
           echo "${HOME}/.codon/bin" >> "${GITHUB_PATH}"
           codon --version
+          echo -ne "import bio\nprint('hello', s'ACGT')\n" | codon run -plugin seq -
+
 
       - name: Check out repository code
         uses: actions/checkout@v4
