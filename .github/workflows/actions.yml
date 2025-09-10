@@ -11,17 +11,27 @@ jobs:
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
 
-      - name: Install Codon
+      - name: Install Codon (installer) + seq plugin
         shell: bash
         run: |
           set -euxo pipefail
           /bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
-          mkdir -p "${HOME}/.codon/lib/codon/plugins"
-          curl -L https://github.com/exaloop/seq/releases/download/v0.11.5/seq-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz \
-            | tar zxvf - -C "${HOME}/.codon/lib/codon/plugins"
-          echo "${HOME}/.codon/bin" >> "${GITHUB_PATH}"
+
+          CODON_DIR="${HOME}/.codon"
+          PLUG_DIR="${CODON_DIR}/lib/codon/plugins"
+          mkdir -p "${PLUG_DIR}"
+
+          curl -fsSL "https://github.com/exaloop/seq/releases/download/v0.11.5/seq-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz" \
+            | tar zxvf - -C "${PLUG_DIR}"
+
+          # Make available now + later
+          export PATH="${CODON_DIR}/bin:${PATH}"
+          echo "${CODON_DIR}/bin" >> "${GITHUB_PATH}"
+
+          which codon
           codon --version
           echo -ne "import bio\nprint('hello', s'ACGT')\n" | codon run -plugin seq -
+
 
 
       - name: Check out repository code
