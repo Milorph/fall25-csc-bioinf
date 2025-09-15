@@ -1,11 +1,10 @@
-# dbg_codon.py — Codon port matching the original dbg.py API (idx-based nodes)
 
 from typing import List, Dict, Set, Optional
 import copy
 
 def reverse_complement(key: str) -> str:
     complement: Dict[str, str] = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
-    # reverse then complement (assume valid ACGT like original)
+
     key_rev: List[str] = list(key[::-1])
     i: int
     for i in range(len(key_rev)):
@@ -40,7 +39,7 @@ class Node:
         return list(self._children)
 
     def remove_children(self, target: Set[int]) -> None:
-        # set difference without relying on .difference_update
+        
         if target and len(target) > 0:
             newset: Set[int] = set()
             ch: int
@@ -52,7 +51,7 @@ class Node:
 class DBG:
     def __init__(self, k: int, data_list: List[List[str]]) -> None:
         self.k: int = k
-        self.nodes: Dict[int, Node] = {0: Node("__seed__")}  # seed dict type for Codon
+        self.nodes: Dict[int, Node] = {0: Node("__seed__")}  
         del self.nodes[0]
         # private
         self.kmer2idx: Dict[str, int] = {}
@@ -62,7 +61,7 @@ class DBG:
         self._build(data_list)
 
     def _check(self, data_list: List[List[str]]) -> None:
-        # check data list (match original assertions)
+        
         assert len(data_list) > 0
         assert self.k <= len(data_list[0][0])
 
@@ -73,7 +72,7 @@ class DBG:
             original: str
             for original in data:
                 rc: str = reverse_complement(original)
-                # match original bound: len(original) - self.k - 1
+                
                 limit: int = len(original) - k - 1
                 if limit <= 0:
                     continue
@@ -83,7 +82,7 @@ class DBG:
                     self._add_arc(rc[i:i+k],        rc[i+1:i+1+k])
 
     def show_count_distribution(self) -> None:
-        # optional: keep behavior (safe in Codon)
+        
         count: List[int] = [0] * 30
         idx: int
         for idx in self.nodes:

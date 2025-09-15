@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# dbg_kmer_as_key_codon.py — Codon-compatible De Bruijn graph (k-mer as key)
+
 from typing import Dict, List, Optional, Set
 
 def reverse_complement(key: str) -> str:

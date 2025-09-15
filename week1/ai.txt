@@ -1,0 +1,24 @@
+Prompts:
+
+How do I set up WSL for my visual studio code?
+
+Where can I find my files if I am using WSL on vsc?
+
+Can you translate this report.pdf for me and summarize it?
+
+Why doesn't the github actions workflow provided by my professor not work?
+
+What is N50 and how do I calculate it? Could you write it in python?
+
+How do you convert Codon to Python? Could you convert this python file to a Codon compatible one, not adding any extra helpers?
+
+Can you add the N50 function to an evaluate.sh file? The evaluate.sh should also compile and run the Python and Codon files against data1, 2, 3, 4.
+
+Why is my Codon slower then my Python files, shouldn't it be faster?
+
+Is my evalute.sh already building and running the release binary? Why is it only slightly faster then my Python files?
+
+How do I run codon files manually? Whats the difference between building it and doing codon run?
+
+LLM: GPT 5
+
