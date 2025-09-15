@@ -20,5 +20,9 @@ Is my evalute.sh already building and running the release binary? Why is it only
 
 How do I run codon files manually? Whats the difference between building it and doing codon run?
 
+How do I use blast to figure out what genome is based on my data file of contigs?
+
+Can you write me a md file that reports what each genome for each of the dataset is?
+
 LLM: GPT 5
 
