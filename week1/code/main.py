@@ -2,6 +2,7 @@ from dbg import DBG
 from utils import read_data
 import sys
 import os
+import time
 
 sys.setrecursionlimit(1000000)
 
@@ -21,3 +22,6 @@ if __name__ == "__main__":
             print(i, len(c))
             f.write('>contig_%d\n' % i)
             f.write(c + '\n')
+    
+    end: float = time.time()
+
