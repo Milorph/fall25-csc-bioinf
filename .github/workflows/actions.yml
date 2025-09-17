@@ -50,8 +50,9 @@ jobs:
           command -v codon || true
 
       - name: Week 1
+        working-directory: week1
         run: |
-          export PATH="$HOME/.codon/bin:$PATH"   # <— add this line
-          chmod +x week1/evaluate.sh
+          export PATH="$HOME/.codon/bin:$PATH"
           ulimit -s 8192000 || true
-          bash week1/evaluate.sh
+          bash ./evaluate.sh
+
