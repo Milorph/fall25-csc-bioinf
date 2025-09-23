@@ -1,7 +1,7 @@
 name: Github CI
 on: [push]
 jobs:
-  week1-test:
+  test:
     runs-on: ubuntu-latest
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
@@ -25,7 +25,37 @@ jobs:
           echo "Found Python at: ${CODON_PYTHON}"
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-  week2-test:
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install matplotlib find_libpython
+      
+      - name: Persist CODON_PYTHON
+        run: |
+          echo "CODON_PYTHON=$(find_libpython)" >> $GITHUB_ENV
+
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+
+      - name: Verify Codon on PATH
+        run: |
+          echo "PATH=$PATH"
+          ls -lah "$HOME/.codon/bin" || true
+          command -v codon || true
+
+      - name: Week 1
+        working-directory: week1
+        run: |
+          export PATH="$HOME/.codon/bin:$PATH"
+          ulimit -s 8192000 || true
+          bash ./evaluate.sh
+  week2-tests:
     name: Week 2 – Python/Biopython tests
     runs-on: ubuntu-latest
     steps:
@@ -35,7 +65,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: '3.12'  # 3.12 is widely supported by Biopython
 
       - name: Install test dependencies
         run: |

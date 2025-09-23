@@ -1,4 +1,5 @@
 set -euo pipefail
+ulimit -s 8192000 || true
 
 # Paths
 CODON_MAIN="code/main_codon.py"
@@ -47,7 +48,6 @@ for ds in "${DATASETS[@]}"; do
   # --- Codon ---
   codon_out="$dsdir/contig_codon.fasta"
   start=$(date +%s.%N)
-  ulimit -s 8192000 || true
   codon run -release "$CODON_MAIN" "$dsdir" >/dev/null
   end=$(date +%s.%N)
   dt=$(echo "$end - $start" | bc)
