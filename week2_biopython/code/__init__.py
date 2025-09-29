@@ -519,7 +519,7 @@ class Motif:
         if version is not None:
             warnings.warn(
                 "The version parameter is deprecated and has no effect.",
-                BiopythonDeprecationWarning,
+                BiopythonDeprecationWarning, 
             )
 
         if set(self.alphabet) == set("ACDEFGHIKLMNPQRSTVWY"):

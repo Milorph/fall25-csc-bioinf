@@ -1,0 +1,240 @@
+from typing import List, Dict, Optional, Tuple, Union
+from matrix import FrequencyPositionMatrix, PositionWeightMatrix, PositionSpecificScoringMatrix
+
+Alphabet = List[str]
+Counts = Dict[str, List[float]]
+Background = Dict[str, float]
+
+class Motif:
+    name: str
+    alphabet: Alphabet
+    counts: Optional[FrequencyPositionMatrix]
+    alignment: Optional[List[str]]
+    length: int
+    _pseudocounts: Background
+    _background: Background
+    _mask: List[int]
+
+    def __init__(self,
+                 alphabet: Optional[str] = None,
+                 alignment: Optional[List[str]] = None,
+                 counts: Optional[Counts] = None) -> None:
+        self.name = ""
+        if alphabet is None:
+            self.alphabet = ["A","C","G","T"]
+        else:
+            self.alphabet = []
+            i: int = 0
+            while i < len(alphabet):
+                self.alphabet.append(alphabet[i])
+                i += 1
+        self.counts = None
+        self.alignment = None
+        self.length = 0
+        self._pseudocounts = {}
+        self._background = {}
+        self._mask = []
+
+        if counts is not None and alignment is not None:
+            raise Exception("Specify either counts or alignment, not both")
+
+        if counts is not None:
+            self.counts = FrequencyPositionMatrix(self.alphabet, counts)
+            self.length = self.counts.length
+        elif alignment is not None:
+            self._validate_alignment(alignment)
+            self.alignment = []
+            i = 0
+            while i < len(alignment):
+                self.alignment.append(alignment[i])
+                i += 1
+            self.length = len(self.alignment[0])
+            cnts: Counts = {}
+            j: int = 0
+            while j < len(self.alphabet):
+                L: str = self.alphabet[j]
+                cnts[L] = [0.0] * self.length
+                j += 1
+            i = 0
+            while i < len(self.alignment):
+                seq: str = self.alignment[i]
+                j = 0
+                while j < self.length:
+                    base: str = seq[j]
+                    if base in cnts:
+                        cnts[base][j] = cnts[base][j] + 1.0
+                    j += 1
+                i += 1
+            self.counts = FrequencyPositionMatrix(self.alphabet, cnts)
+        else:
+            self.counts = None
+
+        # default background uniform
+        self._init_uniform_background()
+        # default pseudocounts 0.0
+        self._init_pseudocounts(0.0)
+        self._mask = [1] * self.length
+
+    def _validate_alignment(self, aln: List[str]) -> None:
+        if len(aln) == 0:
+            raise ValueError("Alignment must contain at least one sequence")
+        L0: int = len(aln[0])
+        i: int = 1
+        while i < len(aln):
+            if len(aln[i]) != L0:
+                raise ValueError("All sequences in alignment must have equal length")
+            i += 1
+
+    def _init_uniform_background(self) -> None:
+        n: float = float(len(self.alphabet))
+        self._background = {}
+        if n <= 0.0:
+            return
+        i: int = 0
+        while i < len(self.alphabet):
+            self._background[self.alphabet[i]] = 1.0 / n
+            i += 1
+
+    def _init_pseudocounts(self, value: float) -> None:
+        self._pseudocounts = {}
+        i: int = 0
+        while i < len(self.alphabet):
+            self._pseudocounts[self.alphabet[i]] = float(value)
+            i += 1
+
+    # Background / pseudocounts
+    def set_background(self, value: Union[float, Background, None]) -> None:
+        bg: Background = {}
+        if isinstance(value, dict):
+            i: int = 0
+            while i < len(self.alphabet):
+                L: str = self.alphabet[i]
+                bg[L] = float(value[L])
+                i += 1
+        elif value is None:
+            i = 0
+            while i < len(self.alphabet):
+                bg[self.alphabet[i]] = 1.0
+                i += 1
+        else:
+            # interpret single value as GC content for DNA/RNA
+            gc: float = float(value)
+            # default assume DNA
+            T_or_U: str = "T"
+            # if alphabet contains U
+            i = 0
+            while i < len(self.alphabet):
+                if self.alphabet[i] == "U":
+                    T_or_U = "U"
+                i += 1
+            bg["A"] = (1.0 - gc) / 2.0
+            bg["C"] = gc / 2.0
+            bg["G"] = gc / 2.0
+            bg[T_or_U] = (1.0 - gc) / 2.0
+        # normalize
+        tot: float = 0.0
+        i = 0
+        while i < len(self.alphabet):
+            L = self.alphabet[i]
+            if L in bg:
+                tot += bg[L]
+            i += 1
+        if tot == 0.0:
+            self._init_uniform_background()
+        else:
+            self._background = {}
+            i = 0
+            while i < len(self.alphabet):
+                L = self.alphabet[i]
+                self._background[L] = bg[L] / tot
+                i += 1
+
+    def get_background(self) -> Background:
+        out: Background = {}
+        i: int = 0
+        while i < len(self.alphabet):
+            L: str = self.alphabet[i]
+            out[L] = self._background[L]
+            i += 1
+        return out
+
+    def set_pseudocounts(self, value: Union[float, Background, None]) -> None:
+        pcs: Background = {}
+        if isinstance(value, dict):
+            i: int = 0
+            while i < len(self.alphabet):
+                L: str = self.alphabet[i]
+                pcs[L] = float(value[L])
+                i += 1
+        else:
+            v: float = 0.0 if value is None else float(value)
+            i = 0
+            while i < len(self.alphabet):
+                pcs[self.alphabet[i]] = v
+                i += 1
+        self._pseudocounts = pcs
+
+    def get_pseudocounts(self) -> Background:
+        out: Background = {}
+        i: int = 0
+        while i < len(self.alphabet):
+            L: str = self.alphabet[i]
+            out[L] = self._pseudocounts[L]
+            i += 1
+        return out
+
+    # PWM/PSSM
+    def get_pwm(self) -> PositionWeightMatrix:
+        if self.counts is None:
+            raise ValueError("No counts available to compute PWM")
+        return self.counts.normalize(self._pseudocounts)
+
+    def get_pssm(self) -> PositionSpecificScoringMatrix:
+        pwm: PositionWeightMatrix = self.get_pwm()
+        return pwm.log_odds(self._background)
+
+    # Consensus
+    def get_consensus(self) -> str:
+        if self.counts is None:
+            return ""
+        return self.counts.consensus
+
+    def get_anticonsensus(self) -> str:
+        if self.counts is None:
+            return ""
+        return self.counts.anticonsensus
+
+    # Relative entropy (bits) per column
+    def get_relative_entropy(self) -> List[float]:
+        if self.counts is None:
+            return []
+        length: int = self.length
+        values: List[float] = [0.0] * length
+        total: List[float] = [0.0] * length
+        i: int = 0
+        while i < length:
+            j: int = 0
+            while j < len(self.alphabet):
+                L: str = self.alphabet[j]
+                total[i] += (self.counts.get_row(L)[i] + self._pseudocounts[L])
+                j += 1
+            i += 1
+        j = 0
+        while j < len(self.alphabet):
+            L = self.alphabet[j]
+            freqs: List[float] = self.counts.get_row(L)
+            i = 0
+            while i < length:
+                f: float = freqs[i] + self._pseudocounts[L]
+                if f > 0.0 and total[i] > 0.0 and self._background[L] > 0.0:
+                    p: float = f / total[i]
+                    # manual log2(p / b)
+                    values[i] += (math_log2(p) - math_log2(self._background[L])) * p
+                i += 1
+            j += 1
+        return values
+
+# tiny helpers to avoid from math import log
+import math
+def math_log2(x: float) -> float:
+    return math.log(x) / math.log(2.0)

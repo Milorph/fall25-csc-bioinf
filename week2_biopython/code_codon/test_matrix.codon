@@ -1,0 +1,88 @@
+# Simple Codon tests for GenericPositionMatrix.__init__ and __str__
+# Run: codon run test_generic_position_matrix.codon
+
+from matrix import GenericPositionMatrix
+
+# put these helpers near the top of matrix.codon (module-level)
+
+def _pad_left(s: str, width: int) -> str:
+    n: int = width - len(s)
+    if n > 0:
+        return (" " * n) + s
+    return s
+
+def _fmt_int_width(i: int, width: int) -> str:
+    return _pad_left(str(i), width)
+
+def _fmt_float_width_2(x: float, width: int) -> str:
+    # round to 2 decimals using integer math for stability
+    neg: bool = x < 0.0
+    ax: float = -x if neg else x
+    scaled: int = int(ax * 100.0 + 0.5)   # round half up
+    whole: int = scaled // 100
+    frac: int = scaled % 100
+    frac_str: str = "0" + str(frac) if frac < 10 else str(frac)
+    s: str = str(whole) + "." + frac_str
+    if neg:
+        s = "-" + s
+    return _pad_left(s, width)
+
+def test_init() -> None:
+    # Prepare inputs
+    alphabet: list[str] = ["A", "C", "G", "T"]
+    values: dict[str, list[float]] = {}
+    values["A"] = [1.0, 0.0, 2.0]
+    values["C"] = [0.0, 3.0, 0.0]
+    values["G"] = [0.0, 0.0, 1.0]
+    values["T"] = [2.0, 0.0, 0.0]
+
+    # Construct
+    m = GenericPositionMatrix(alphabet, values)
+
+    # Assertions
+    assert m.length == 3, "length mismatch"
+    # verify rows copied as floats
+    arow: list[float] = m.get_row("A")
+    assert len(arow) == 3, "row length mismatch"
+    assert arow[0] == 1.0 and arow[1] == 0.0 and arow[2] == 2.0, "row values mismatch"
+
+def test_str() -> None:
+    alphabet: list[str] = ["A", "C"]
+    values: dict[str, list[float]] = {}
+    values["A"] = [1.0, 2.5]
+    values["C"] = [0.0, 3.75]
+
+    m = GenericPositionMatrix(alphabet, values)
+    s: str = str(m)
+
+    # Build expected string exactly like __str__ formats it.
+    # Header
+    header_words: list[str] = []
+    i: int = 0
+    while i < 2:
+        header_words.append(_fmt_int_width(i, 6))
+        i += 1
+    expected_lines: list[str] = []
+    expected_lines.append("   " + " ".join(header_words))
+
+    # Row for A
+    aw: list[str] = []
+    aw.append(_fmt_float_width_2(1.0, 6))
+    aw.append(_fmt_float_width_2(2.5, 6))
+    expected_lines.append("A: " + " ".join(aw))
+
+    # Row for C
+    cw: list[str] = []
+    cw.append(_fmt_float_width_2(0.0, 6))
+    cw.append(_fmt_float_width_2(3.75, 6))
+    expected_lines.append("C: " + " ".join(cw))
+
+    expected: str = "\n".join(expected_lines) + "\n"
+
+
+    assert s == expected, "string representation mismatch:\nGOT:\n" + s + "\nEXP:\n" + expected
+
+if __name__ == "__main__":
+    test_init()
+    test_str()
+    print("OK")

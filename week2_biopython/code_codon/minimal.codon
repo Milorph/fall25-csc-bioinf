@@ -1,0 +1,294 @@
+from typing import List, Dict, Tuple, Optional, Union, TextIO
+from motif import Motif
+
+Alphabet = List[str]
+Counts = Dict[str, List[float]]
+Background = Dict[str, float]
+
+class Record:
+    version: str
+    datafile: str
+    command: str
+    alphabet: Alphabet
+    background: Background
+    sequences: List[str]
+    _motifs: List[Motif]
+
+    def __init__(self) -> None:
+        self.version = ""
+        self.datafile = ""
+        self.command = ""
+        self.alphabet = []
+        self.background = {}
+        self.sequences = []
+        self._motifs = []
+
+    def append(self, motif: Motif) -> None:
+        self._motifs.append(motif)
+
+    def __len__(self) -> int:
+        return len(self._motifs)
+
+    def __iter__(self):
+        i: int = 0
+        while i < len(self._motifs):
+            yield self._motifs[i]
+            i += 1
+
+    def get(self, key: Union[int, str]) -> Motif:
+        if isinstance(key, int):
+            return self._motifs[key]
+        i: int = 0
+        while i < len(self._motifs):
+            if self._motifs[i].name == key:
+                return self._motifs[i]
+            i += 1
+        raise KeyError("Motif not found: " + str(key))
+
+
+def read(handle: Union[TextIO, List[str]]) -> Record:
+    if isinstance(handle, list):
+        lines: List[str] = handle
+    else:
+        lines = handle.readlines()
+
+    rec: Record = Record()
+    idx: int = 0
+
+    version, idx = _read_version(lines, idx)
+    rec.version = version
+
+    alpha_str, idx = _read_alphabet(lines, idx)
+    rec.alphabet = _alphabet_to_list(alpha_str)
+
+    background, idx = _read_background(lines, idx, rec.alphabet)
+    rec.background = background
+
+    while True:
+        found: bool = False
+        while idx < len(lines):
+            line: str = lines[idx].strip()
+            if _starts_with(line, "MOTIF"):
+                found = True
+                break
+            idx += 1
+        if not found:
+            break
+
+        name: str = ""
+        parts: List[str] = lines[idx].strip().split()
+        if len(parts) >= 2:
+            name = parts[1]
+        idx += 1
+
+        length, nsites, evalue, idx = _read_motif_statistics(lines, idx)
+        counts, idx = _read_lpm(lines, idx, length, nsites, rec.alphabet)
+
+        m: Motif = Motif(alphabet="".join(rec.alphabet), counts=counts)
+        m.set_background(rec.background)
+        m.name = name
+        try:
+            m.num_occurrences = nsites  # type: ignore
+            m.evalue = evalue           # type: ignore
+        except Exception:
+            pass
+
+        rec.append(m)
+
+    return rec
+
+
+def _starts_with(line: str, prefix: str) -> bool:
+    n: int = len(prefix)
+    if len(line) < n:
+        return False
+    return line[0:n] == prefix
+
+def _alphabet_to_list(alphabet: str) -> Alphabet:
+    out: Alphabet = []
+    i: int = 0
+    while i < len(alphabet):
+        out.append(alphabet[i])
+        i += 1
+    return out
+
+def _read_version(lines: List[str], index: int) -> Tuple[str, int]:
+    i: int = index
+    while i < len(lines):
+        line: str = lines[i].strip()
+        if _starts_with(line, "MEME version"):
+            toks: List[str] = line.split()
+            version: str = ""
+            if len(toks) >= 3:
+                version = toks[2]
+            return version, i + 1
+        i += 1
+    raise ValueError("Missing 'MEME version'")
+
+def _read_alphabet(lines: List[str], index: int) -> Tuple[str, int]:
+    i: int = index
+    while i < len(lines):
+        line: str = lines[i].strip()
+        if _starts_with(line, "ALPHABET"):
+            pref: str = "ALPHABET= "
+            if not _starts_with(line, pref):
+                raise ValueError("Line does not start with 'ALPHABET= '")
+            alpha: str = line[len(pref):]
+            if not (alpha == "ACGT" or alpha == "ACGU"):
+                raise ValueError("Only ACGT/ACGU supported")
+            return alpha, i + 1
+        i += 1
+    raise ValueError("Missing 'ALPHABET' line")
+
+def _read_background(lines: List[str], index: int, alphabet: Alphabet) -> Tuple[Background, int]:
+    i: int = index
+    while i < len(lines):
+        header: str = lines[i].strip()
+        if _starts_with(header, "Background letter frequencies"):
+            i += 1
+            break
+        i += 1
+    else:
+        raise ValueError("Missing background block")
+
+    freqs: List[float] = []
+    while i < len(lines):
+        s: str = lines[i].rstrip()
+        if s == "":
+            i += 1
+            break
+        toks: List[str] = s.split(" ")
+        j: int = 0
+        while j < len(toks):
+            if (j % 2) == 1:
+                try:
+                    freqs.append(float(toks[j]))
+                except Exception:
+                    raise ValueError("Invalid background frequency: " + toks[j])
+            j += 1
+        i += 1
+
+    bg: Background = {}
+    k: int = 0
+    while k < len(alphabet) and k < len(freqs):
+        bg[alphabet[k]] = freqs[k]
+        k += 1
+
+    total: float = 0.0
+    k = 0
+    while k < len(alphabet):
+        if alphabet[k] in bg:
+            total += bg[alphabet[k]]
+        k += 1
+    if total > 0.0:
+        k = 0
+        while k < len(alphabet):
+            if alphabet[k] in bg:
+                bg[alphabet[k]] = bg[alphabet[k]] / total
+            k += 1
+
+    return bg, i
+
+def _has_prefix(s: str, prefix: str) -> bool:
+    n: int = len(prefix)
+    if len(s) < n:
+        return False
+    return s[0:n] == prefix
+
+def _after_equals(s: str) -> str:
+    j: int = 0
+    while j < len(s):
+        if s[j] == "=":
+            if (j + 1) < len(s):
+                return s[j + 1:]
+            return ""
+        j += 1
+    return ""
+
+def _read_motif_statistics(lines: List[str], index: int) -> Tuple[Optional[int], int, float, int]:
+    i: int = index
+    while i < len(lines):
+        line: str = lines[i].strip()
+        if _starts_with(line, "letter-probability matrix:"):
+            length: Optional[int] = None
+            nsites: int = 20
+            evalue: float = 0.0
+            toks: List[str] = line.split()
+            t: int = 0
+            while t < len(toks):
+                tok: str = toks[t]
+                if _has_prefix(tok, "w="):
+                    val: str = _after_equals(tok)
+                    if val == "" and (t + 1) < len(toks):
+                        val = toks[t + 1]
+                    if val != "":
+                        try:
+                            length = int(val)
+                        except Exception:
+                            pass
+                elif _has_prefix(tok, "nsites="):
+                    val = _after_equals(tok)
+                    if val == "" and (t + 1) < len(toks):
+                        val = toks[t + 1]
+                    if val != "":
+                        try:
+                            nsites = int(val)
+                        except Exception:
+                            pass
+                elif _has_prefix(tok, "E="):
+                    val = _after_equals(tok)
+                    if val == "" and (t + 1) < len(toks):
+                        val = toks[t + 1]
+                    if val != "":
+                        try:
+                            evalue = float(val)
+                        except Exception:
+                            pass
+                t += 1
+            return (length, nsites, evalue, i + 1)
+        i += 1
+    raise ValueError("Missing 'letter-probability matrix:' line")
+
+def _read_lpm(lines: List[str], index: int, length: Optional[int], nsites: int,
+              alphabet: Alphabet) -> Tuple[Counts, int]:
+    i: int = index
+    rows_read: int = 0
+    counts_cols: List[List[float]] = []
+    ai: int = 0
+    while ai < len(alphabet):
+        counts_cols.append([])
+        ai += 1
+
+    while i < len(lines):
+        line: str = lines[i].strip()
+        if line == "":
+            i += 1
+            break
+        toks: List[str] = line.split()
+        if len(toks) != 4:
+            break
+        probs: List[float] = [0.0, 0.0, 0.0, 0.0]
+        j: int = 0
+        while j < 4:
+            try:
+                probs[j] = float(toks[j])
+            except Exception:
+                raise ValueError("Invalid probability in LPM: " + toks[j])
+            j += 1
+        j = 0
+        while j < 4 and j < len(counts_cols):
+            counts_cols[j].append(round(probs[j] * float(nsites)))
+            j += 1
+
+        rows_read += 1
+        i += 1
+        if length is not None and rows_read >= length:
+            break
+
+    counts: Counts = {}
+    a: int = 0
+    while a < len(alphabet) and a < len(counts_cols):
+        counts[alphabet[a]] = counts_cols[a]
+        a += 1
+
+    return counts, i

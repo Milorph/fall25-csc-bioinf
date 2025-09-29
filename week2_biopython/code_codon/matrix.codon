@@ -1,0 +1,117 @@
+from typing import Optional
+from python import numpy
+import math
+
+# at the top of test_matrix.codon (or import from matrix.codon if you prefer)
+def _pad_left(s: str, width: int) -> str:
+    n: int = width - len(s)
+    if n > 0:
+        return (" " * n) + s
+    return s
+
+def _fmt_int_width(i: int, width: int) -> str:
+    return _pad_left(str(i), width)
+
+def _fmt_float_width_2(x: float, width: int) -> str:
+    neg: bool = x < 0.0
+    ax: float = -x if neg else x
+    scaled: int = int(ax * 100.0 + 0.5)
+    whole: int = scaled // 100
+    frac: int = scaled % 100
+    frac_str: str = "0" + str(frac) if frac < 10 else str(frac)
+    s: str = str(whole) + "." + frac_str
+    if neg:
+        s = "-" + s
+    return _pad_left(s, width)
+
+
+class Seq:
+    def __init__(self, sequence: str):
+        self._data = sequence
+    
+    def __str__(self) -> str:
+        return self._data
+    
+    def __repr__(self) -> str:
+        return "Seq('" + self._data + "')"
+    
+    def __len__(self) -> int:
+        return len(self._data)
+    
+    def __getitem__(self, index: int) -> str:
+        return self._data[index]
+
+class GenericPositionMatrix:
+    """Base class for the support of position matrix operations."""
+
+    alphabet: List[str]
+    length: int
+    _data: Dict[str, List[float]]
+
+    def __init__(self, alphabet: List[str], values: Dict[str, List[float]]) -> None:
+        """Initialize the class."""
+        self.alphabet = []
+        i: int = 0
+        while i < len(alphabet):
+            self.alphabet.append(alphabet[i])
+            i += 1
+
+        self._data = {}
+        self.length = -1
+
+        j: int = 0
+        while j < len(self.alphabet):
+            letter: str = self.alphabet[j]
+            v_in: List[float] = values[letter]
+            if self.length < 0:
+                self.length = len(v_in)
+            elif self.length != len(v_in):
+                raise Exception("data has inconsistent lengths")
+
+            # copy row explicitly
+            row: List[float] = []
+            k: int = 0
+            while k < len(v_in):
+                row.append(float(v_in[k]))
+                k += 1
+
+            self._data[letter] = row
+            j += 1
+
+        if self.length < 0:
+            self.length = 0
+
+    def get_row(self, letter: str) -> List[float]:
+        return self._data[letter]
+    
+    def __str__(self) -> str:
+        """Return a string containing nucleotides and counts of the alphabet in the Matrix."""
+        # header row with 6-wide right-justified indices
+        words: list[str] = []
+        i: int = 0
+        while i < self.length:
+            words.append(_fmt_int_width(i, 6))
+            i += 1
+        line: str = "   " + " ".join(words)
+        lines: list[str] = [line]
+
+        # rows: letter + 6-wide floats with 2 decimals
+        j: int = 0
+        while j < len(self.alphabet):
+            letter: str = self.alphabet[j]
+            row: list[float] = self._data[letter]
+            words = []
+            k: int = 0
+            while k < len(row):
+                words.append(_fmt_float_width_2(row[k], 6))
+                k += 1
+            line = letter + ": " + " ".join(words)
+            lines.append(line)
+            j += 1
+
+        text: str = "\n".join(lines) + "\n"
+        return text
+
+
+
+
