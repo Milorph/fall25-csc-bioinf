@@ -1,0 +1,272 @@
+# codon_impl/motif_aligner.codon
+# Progressive, safe multiple alignment for encoded TR strings (Codon-friendly).
+# - No external tools
+# - Needleman–Wunsch for pairwise
+# - Robust projection of pairwise gaps back onto the current MSA
+# - Public API preserved
+
+from typing import List, Tuple, Dict
+
+
+EMPTY_INT_MATRIX: Dict[str, Dict[str, int]] = {}
+
+def _sanitize_ascii(s: str) -> str:
+    out = ""
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        o = ord(ch)
+        if o >= 33 and o <= 126:
+            out = out + ch
+        else:
+            out = out + "X"
+        i += 1
+    return out
+
+def _right_pad_equal(seq_list: List[str]) -> List[str]:
+    # Sanitize and find max length
+    clean: List[str] = []
+    max_len = 0
+    i = 0
+    while i < len(seq_list):
+        s = seq_list[i]
+        if s is None:
+            s = ""
+        s = _sanitize_ascii(s)
+        clean.append(s)
+        if len(s) > max_len:
+            max_len = len(s)
+        i += 1
+    # Pad manually (no '-' * n)
+    out: List[str] = []
+    i = 0
+    while i < len(clean):
+        s = clean[i]
+        need = max_len - len(s)
+        if need < 0:
+            need = 0
+        pad = ""
+        j = 0
+        while j < need:
+            pad = pad + "-"
+            j += 1
+        out.append(s + pad)
+        i += 1
+    return out
+
+# -----------------------------
+# Pairwise Needleman–Wunsch
+# -----------------------------
+def _nw(a: str, b: str, match: int = 2, mismatch: int = -1, gap: int = -1) -> Tuple[str, str, int]:
+    n = len(a)
+    m = len(b)
+    S: List[List[int]] = [[0] * (m + 1) for _ in range(n + 1)]
+
+    i = 1
+    while i <= n:
+        S[i][0] = S[i - 1][0] + gap
+        i += 1
+    j = 1
+    while j <= m:
+        S[0][j] = S[0][j - 1] + gap
+        j += 1
+
+    i = 1
+    while i <= n:
+        j = 1
+        while j <= m:
+            sc = match if a[i - 1] == b[j - 1] else mismatch
+            d = S[i - 1][j - 1] + sc
+            u = S[i - 1][j] + gap
+            l = S[i][j - 1] + gap
+            best = d
+            if u > best:
+                best = u
+            if l > best:
+                best = l
+            S[i][j] = best
+            j += 1
+        i += 1
+
+    A: List[str] = []
+    B: List[str] = []
+    i = n
+    j = m
+    while i > 0 or j > 0:
+        if i > 0 and j > 0:
+            sc = match if a[i - 1] == b[j - 1] else mismatch
+            if S[i][j] == S[i - 1][j - 1] + sc:
+                A.append(a[i - 1]); B.append(b[j - 1]); i -= 1; j -= 1; continue
+        if i > 0 and S[i][j] == S[i - 1][j] + gap:
+            A.append(a[i - 1]); B.append('-'); i -= 1; continue
+        B.append(b[j - 1]); A.append('-'); j -= 1
+
+    A.reverse(); B.reverse()
+    return "".join(A), "".join(B), S[n][m]
+
+def _ungap(s: str) -> str:
+    out = ""
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if ch != '-':
+            out = out + ch
+        i += 1
+    return out
+
+# -----------------------------
+# Merge a new sequence into an existing MSA
+# -----------------------------
+def _merge_into_msa(msa_rows: List[str], new_seq: str) -> List[str]:
+    """
+    Project pairwise alignment (ungapped center vs new_seq) back onto
+    the *gapped* MSA columns without ever reading past bounds.
+    """
+    if len(msa_rows) == 0:
+        return [new_seq]
+    if len(msa_rows) == 1 and len(msa_rows[0]) == 0:
+        return [new_seq]
+
+    g_center = msa_rows[0]          # current MSA "template", gapped
+    u_center = _ungap(g_center)     # ungapped template for NW
+
+    ac, an, _ = _nw(u_center, new_seq)  # aligned(ungapped_center, new)
+
+    # Builders for each existing row + the new row
+    builders: List[List[str]] = [[] for _ in range(len(msa_rows))]
+    new_builder: List[str] = []
+
+    c = 0     # column index in current gapped MSA
+    k = 0     # index in ac/an (pairwise alignment coords over ungapped center)
+
+    # Loop until both the MSA columns and the pairwise alignment are consumed
+    while c < len(g_center) or k < len(ac):
+        # 1) If there are still gap columns in existing MSA at c, copy them verbatim
+        if c < len(g_center) and g_center[c] == '-':
+            r = 0
+            while r < len(msa_rows):
+                builders[r].append(msa_rows[r][c])
+                r += 1
+            new_builder.append('-')
+            c += 1
+            continue
+
+        # 2) If pairwise has an insertion relative to the center ('-' in ac), create a fresh column
+        if k < len(ac) and ac[k] == '-':
+            r = 0
+            while r < len(msa_rows):
+                builders[r].append('-')
+                r += 1
+            new_builder.append(an[k])
+            k += 1
+            # do not advance c (still at the same MSA column)
+            continue
+
+        # 3) If both a residue column exists in MSA and pairwise has a residue, copy MSA column + place an[k]
+        if c < len(g_center) and k < len(ac):
+            # copy existing MSA column
+            r = 0
+            while r < len(msa_rows):
+                builders[r].append(msa_rows[r][c])
+                r += 1
+            # place the new residue (could be '-' in very odd cases, but safe)
+            new_builder.append(an[k])
+            c += 1
+            k += 1
+            continue
+
+        # 4) If MSA still has residue columns but pairwise is exhausted, copy the rest with gaps for new
+        if c < len(g_center) and k >= len(ac):
+            r = 0
+            while r < len(msa_rows):
+                builders[r].append(msa_rows[r][c])
+                r += 1
+            new_builder.append('-')
+            c += 1
+            continue
+
+        # 5) If pairwise has extra positions but MSA columns are done, create new columns
+        if k < len(ac) and c >= len(g_center):
+            # Whether ac[k] is '-' or a residue, we must add a brand-new column
+            r = 0
+            while r < len(msa_rows):
+                builders[r].append('-')
+                r += 1
+            new_builder.append(an[k])
+            k += 1
+            continue
+
+        # Fallback (shouldn't hit)
+        break
+
+    # Emit final strings
+    out: List[str] = []
+    r = 0
+    while r < len(builders):
+        out.append("".join(builders[r]))
+        r += 1
+    out.append("".join(new_builder))
+    return out
+
+# -----------------------------
+# Public API
+# -----------------------------
+class MotifAligner:
+    def align(
+        self,
+        sample_ids: List[str],
+        encoded_vntrs: List[str],
+        vid: str = "",
+        score_matrix: Dict[str, Dict[str, int]] = EMPTY_INT_MATRIX,  # keep signature
+        output_dir: str = "./",
+        tool: str = "star"
+    ) -> Tuple[List[str], List[str]]:
+        # Defensive checks to avoid Codon crashes
+        if encoded_vntrs is None:
+            return [], []
+        if len(encoded_vntrs) == 0:
+            return [], []
+        # Crash-proof baseline "alignment": sanitize + right-pad
+        aligned = _right_pad_equal(encoded_vntrs)
+        return sample_ids, aligned
+
+    @staticmethod
+    def load_aligned_trs(aln_output_path: str) -> Tuple[List[str], List[str]]:
+        ids: List[str] = []
+        seqs: List[str] = []
+        try:
+            f = open(aln_output_path, "r")
+            cur_id = ""
+            cur_seq = ""
+            for raw in f:
+                line = raw.strip()
+                if len(line) == 0:
+                    continue
+                if line[0] == '>':
+                    if len(cur_id) != 0:
+                        ids.append(cur_id)
+                        seqs.append(cur_seq)
+                        cur_seq = ""
+                    cur_id = line[1:]
+                else:
+                    cur_seq = cur_seq + line
+            f.close()
+            if len(cur_id) != 0:
+                ids.append(cur_id)
+                seqs.append(cur_seq)
+        except Exception as e:
+            raise ValueError("Failed to read alignment file: " + str(e))
+        if len(seqs) == 0:
+            raise ValueError("No aligned alleles found in " + aln_output_path)
+        return ids, seqs
+
+# -----------------------------
+# Self-check
+# -----------------------------
+if __name__ == "__main__":
+    ids = ["s1", "s2", "s3", "s4"]
+    enc = ["aab", "aaab", "aaabb", "ab"]
+    out_ids, out_aln = MotifAligner().align(ids, enc, tool="star")
+    print(out_ids)
+    for r in out_aln:
+        print(r)

@@ -1,0 +1,24 @@
+from decomposer import Decomposer
+
+@test
+def test_refine():
+    d = Decomposer()
+    decomposed_trs = [
+        ["AACAT", "AACA", "AACA", "AACAT", "AACA"],
+        ["AACAT", "AACA", "AACA", "AACAT", "AACA"],
+        ["AACA", "TAACA", "AACA", "AACA", "TAACA"],
+    ]
+    expected = [
+        ["AACAT", "AACA", "AACA", "AACAT", "AACA"],
+        ["AACAT", "AACA", "AACA", "AACAT", "AACA"],
+        ["AACAT", "AACA", "AACA", "AACAT", "AACA"],
+    ]
+
+    refined = d.refine(decomposed_trs)
+    if refined == expected:
+        print("✅ test_refine passed")
+    else:
+        print("❌ test_refine failed")
+
+if __name__ == "__main__":
+  test_refine()

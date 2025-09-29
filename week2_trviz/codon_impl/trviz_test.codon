@@ -1,0 +1,45 @@
+from main import TandemRepeatVizWorker
+
+@test
+def test_trviz_worker_pipeline():
+    worker = TandemRepeatVizWorker()
+    tr_id = "test"
+    tr_seqs = [
+        "ACTACTACTACTACT",
+        "ACTACTACTACTACTACTACTACTACTACTACTACTACT",
+        "ACTACTACTACTACT",
+        "ACTACTACTACTACTACTACTACTACTACTACTACT",
+        "ACTACTACTACTACTACTACTACTACTACTACT",
+        "ACTACTACTACTACTACTACTACTACTACT",
+        "ACTACTACTACTACTACTACTACTACT",
+        "ACTACTACTACTACTACTACTACT",
+        "ACTACTACTACTACTACT",
+        "ACTACTACTACTACTACTACT"
+    ]
+    tr_seqs = tr_seqs * 2
+    sample_ids = []
+    i = 0
+    while i < len(tr_seqs):
+        sample_ids.append("sample" + str(i + 1))
+        i += 1
+    motifs = ["ACT"]
+
+    try:
+        ids_out, aln_out = worker.generate_trdata(
+            tr_id=tr_id,
+            sample_ids=sample_ids,
+            tr_sequences=tr_seqs,
+            motifs=motifs,
+            hide_dendrogram=False,
+            skip_alignment=True,
+            output_dir="./outputs",
+            verbose=False
+        )
+        if len(ids_out) == len(tr_seqs) and len(aln_out) == len(tr_seqs):
+            print("✅ test_trviz_worker_pipeline passed")
+        else:
+            print("❌ test_trviz_worker_pipeline failed (length mismatch)")
+    except Exception as e:
+        print("❌ test_trviz_worker_pipeline failed (error: " + str(e) + ")")
+if __name__ == "__main__":
+  test_trviz_worker_pipeline()

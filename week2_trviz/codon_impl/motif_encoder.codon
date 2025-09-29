@@ -1,0 +1,303 @@
+from typing import Dict, List, Tuple
+
+# -----------------------
+# Utilities (Codon-safe)
+# -----------------------
+def _sanitize_ascii_visible(s: str) -> str:
+    # Keep printable ASCII '!'..'~' (33..126). Replace others with 'X'
+    out = ""
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        o = ord(ch)
+        if o >= 33 and o <= 126:
+            out = out + ch
+        else:
+            out = out + "X"
+        i += 1
+    return out
+
+def _upper_ascii(s: str) -> str:
+    out = ""
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        o = ord(ch)
+        if o >= 97 and o <= 122:  # a..z
+            out = out + chr(o - 32)
+        else:
+            out = out + ch
+        i += 1
+    return out
+
+def _build_label_alphabet() -> List[str]:
+    # A safe encoding alphabet that avoids '-' and '?' (reserved for gap/private)
+    # Use digits + uppercase + lowercase + a subset of symbols
+    out: List[str] = []
+
+    # digits 0-9
+    code = 48
+    while code <= 57:
+        out.append(chr(code))
+        code += 1
+
+    # uppercase A-Z
+    code = 65
+    while code <= 90:
+        out.append(chr(code))
+        code += 1
+
+    # lowercase a-z
+    code = 97
+    while code <= 122:
+        out.append(chr(code))
+        code += 1
+
+    # a few extra safe symbols (exclude '-', '?')
+    extra = "!@#$%^&*+=/:;.,~_[]{}<>\\|"
+    i = 0
+    while i < len(extra):
+        ch = extra[i]
+        if ch != '-' and ch != '?':
+            out.append(ch)
+        i += 1
+
+    return out
+
+INDEX_TO_CHR: List[str] = _build_label_alphabet()
+PRIVATE_MOTIF_LABEL: str = "?"
+
+# Typed empties to avoid List[NoneType]/Dict[NoneType, ...] inference
+EMPTY_STR_LIST: List[str] = []
+EMPTY_INT_DICT: Dict[str, int] = {}
+EMPTY_STR_STR_DICT: Dict[str, str] = {}
+EMPTY_INTMATRIX: Dict[str, Dict[str, int]] = {}
+
+def _most_common(counter: Dict[str, int]) -> List[Tuple[str, int]]:
+    # Deterministic: sort by (-count, motif)
+    tmp: List[Tuple[int, str, str, int]] = []
+    for key in counter:
+        cnt = counter[key]
+        tmp.append((-cnt, key, key, cnt))
+
+    i = 0
+    while i < len(tmp):
+        j = i + 1
+        while j < len(tmp):
+            # compare (-count, motif)
+            # smaller first for the -count => larger original count first
+            a0 = tmp[i][0]; b0 = tmp[j][0]
+            a1 = tmp[i][1]; b1 = tmp[j][1]
+            swap = False
+            if b0 < a0:
+                swap = True
+            elif b0 == a0 and b1 < a1:
+                swap = True
+            if swap:
+                t = tmp[i]; tmp[i] = tmp[j]; tmp[j] = t
+            j += 1
+        i += 1
+
+    out: List[Tuple[str, int]] = []
+    k = 0
+    while k < len(tmp):
+        _negcnt, _keysort, motif, cnt = tmp[k]
+        out.append((motif, cnt))
+        k += 1
+    return out
+
+def _get_motif_counter(decomposed_vntrs: List[List[str]]) -> Dict[str, int]:
+    c: Dict[str, int] = {}
+    i = 0
+    while i < len(decomposed_vntrs):
+        vntr = decomposed_vntrs[i]
+        j = 0
+        while j < len(vntr):
+            m = vntr[j]
+            if m is None:
+                m = ""
+            m = _sanitize_ascii_visible(_upper_ascii(m))
+            c[m] = c.get(m, 0) + 1
+            j += 1
+        i += 1
+    return c
+
+def _get_score_matrix(symbol_to_motif: Dict[str, str]) -> Dict[str, Dict[str, int]]:
+    # Simple integer match/mismatch matrix for downstream API parity.
+    # match = +2, mismatch = -1
+    keys: List[str] = []
+    for s in symbol_to_motif:
+        keys.append(s)
+
+    mat: Dict[str, Dict[str, int]] = {}
+    i = 0
+    while i < len(keys):
+        a = keys[i]
+        row: Dict[str, int] = {}
+        j = 0
+        while j < len(keys):
+            b = keys[j]
+            row[b] = 2 if a == b else -1
+            j += 1
+        mat[a] = row
+        i += 1
+
+    # If PRIVATE label exists, wire it minimally
+    if PRIVATE_MOTIF_LABEL in symbol_to_motif and PRIVATE_MOTIF_LABEL not in mat:
+        prow: Dict[str, int] = {}
+        j = 0
+        while j < len(keys):
+            b = keys[j]
+            mat[b][PRIVATE_MOTIF_LABEL] = -1
+            prow[b] = -1
+            j += 1
+        prow[PRIVATE_MOTIF_LABEL] = 2
+        mat[PRIVATE_MOTIF_LABEL] = prow
+
+    return mat
+
+# -----------------------
+# Encoder
+# -----------------------
+class MotifEncoder:
+    def __init__(self, private_motif_threshold: int = 0):
+        self.private_motif_threshold: int = private_motif_threshold
+        self.symbol_to_motif: Dict[str, str] = {}
+        self.motif_to_symbol: Dict[str, str] = {}
+        self.score_matrix: Dict[str, Dict[str, int]] = {}
+        self.motif_counter: Dict[str, int] = {}
+
+    def _index_to_char(self, index: int) -> str:
+        if index < 0 or index >= len(INDEX_TO_CHR):
+            raise ValueError("Index out of range for encoding alphabet")
+        return INDEX_TO_CHR[index]
+
+    def write_motif_map(
+        self,
+        output_file: str,
+        motif_to_alphabet: Dict[str, str],
+        motif_counter: Dict[str, int]
+    ) -> None:
+        # Write "motif \t symbol \t count\n" per line
+        f = open(output_file, "w")
+        pairs = _most_common(motif_counter)
+        i = 0
+        while i < len(pairs):
+            motif, _cnt = pairs[i]
+            sym = motif_to_alphabet[motif]
+            # All sanitized already, but sanitize again to be extra-safe for file IO
+            motif_s = _sanitize_ascii_visible(motif)
+            sym_s = _sanitize_ascii_visible(sym)
+            cnt_s = str(motif_counter[motif])
+            f.write(motif_s + "\t" + sym_s + "\t" + cnt_s + "\n")
+            i += 1
+        f.close()
+
+    def _encode_single(self, vntr: List[str], motif_to_symbol: Dict[str, str]) -> str:
+        out = ""
+        j = 0
+        while j < len(vntr):
+            m = vntr[j]
+            if m is None:
+                m = ""
+            m = _sanitize_ascii_visible(_upper_ascii(m))
+            # fallback: if unknown motif seen, map to PRIVATE label
+            sym = motif_to_symbol.get(m, PRIVATE_MOTIF_LABEL)
+            out = out + sym
+            j += 1
+        return out
+
+    def _encode_decomposed_tr(
+        self,
+        decomposed_vntrs: List[List[str]],
+        motif_to_symbol: Dict[str, str]
+    ) -> List[str]:
+        labeled: List[str] = []
+        i = 0
+        while i < len(decomposed_vntrs):
+            vntr = decomposed_vntrs[i]
+            labeled.append(self._encode_single(vntr, motif_to_symbol))
+            i += 1
+        return labeled
+
+    def encode(
+        self,
+        decomposed_vntrs: List[List[str]],
+        motif_map_file: str,
+        label_count: int = -1,
+        auto: bool = True
+    ) -> List[str]:
+        # 1) Count motifs (sanitized+uppercased)
+        motif_counter = _get_motif_counter(decomposed_vntrs)
+        self.motif_counter = motif_counter
+
+        # 2) Decide threshold (baseline: no private motifs to keep things simple)
+        self.private_motif_threshold = 0
+
+        # 3) Ensure alphabet capacity
+        unique = 0
+        for _ in motif_counter:
+            unique += 1
+        if unique > len(INDEX_TO_CHR):
+            raise ValueError("Too many unique motifs for encoding alphabet")
+
+        # 4) Assign symbols deterministically
+        motif_to_symbol: Dict[str, str] = {}
+        symbol_to_motif: Dict[str, str] = {}
+
+        pairs = _most_common(motif_counter)
+        idx = 0
+        i = 0
+        while i < len(pairs):
+            motif, _cnt = pairs[i]
+            # sanitize again to ensure keys are safe
+            motif_s = _sanitize_ascii_visible(_upper_ascii(motif))
+            ch = self._index_to_char(idx)
+            motif_to_symbol[motif_s] = ch
+            symbol_to_motif[ch] = motif_s
+            idx += 1
+            i += 1
+
+        # 5) Write motif map
+        self.write_motif_map(motif_map_file, motif_to_symbol, motif_counter)
+
+        # 6) Expose state for downstream callers
+        self.motif_to_symbol = motif_to_symbol
+        self.symbol_to_motif = symbol_to_motif
+        self.score_matrix = _get_score_matrix(symbol_to_motif)
+
+        # 7) Encode sequences (return a FRESH list; no aliasing)
+        labeled = self._encode_decomposed_tr(decomposed_vntrs, motif_to_symbol)
+        out: List[str] = []
+        i = 0
+        while i < len(labeled):
+            s = labeled[i]
+            # force a brand-new string object and sanitize
+            out.append(_sanitize_ascii_visible("" + s))
+            i += 1
+        return out
+
+# -----------------------
+# Self-test (safe to run)
+# -----------------------
+if __name__ == "__main__":
+    # Tiny synthetic TR decomposition (normally produced by Decomposer)
+    decomposed = [
+        ["ACCTTG", "ACCTTG", "ACCTTC"],
+        ["ACCTTG", "ACCTTC", "ACCTTC"],
+        ["ACCTTC", "ACCTTG", "ACCTTC"],
+    ]
+    motifs = MotifEncoder()
+    # Make sure outputs/ exists before running this file via codon:
+    #   mkdir -p outputs
+    enc = motifs.encode(decomposed, "outputs/TEST_TR_motif_map.txt", auto=True)
+
+    # Print only lengths (not the raw list repr)
+    print("Encoded N=" + str(len(enc)))
+    i = 0
+    while i < len(enc):
+        print(" row " + str(i) + " len " + str(len(enc[i])))
+        i += 1
+    # Show first encoded row for sanity
+    if len(enc) > 0:
+        print(" first:", enc[0])

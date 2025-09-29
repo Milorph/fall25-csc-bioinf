@@ -1,0 +1,2 @@
+ACCTTC	0	5
+ACCTTG	1	4
