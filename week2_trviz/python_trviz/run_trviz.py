@@ -1,11 +1,7 @@
 # pyviz/run_trviz.py
 import argparse, os
 from pathlib import Path
-import warnings
-from Bio import BiopythonDeprecationWarning
 
-# Silence the deprecation warning if you like (optional)
-warnings.simplefilter("ignore", BiopythonDeprecationWarning)
 
 from trviz.main import TandemRepeatVizWorker
 from trviz.utils import get_sample_and_sequence_from_fasta

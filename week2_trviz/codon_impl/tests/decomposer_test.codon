@@ -1,5 +1,5 @@
 # codon_impl/decomposer_test.codon
-from decomposer import Decomposer
+from ..decomposer import Decomposer
 
 def assert_equal(actual: str, expected: str, name: str) -> None:
     if actual == expected:

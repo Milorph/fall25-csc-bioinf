@@ -9,6 +9,7 @@ from motif_encoder import MotifEncoder
 from motif_aligner import MotifAligner
 from utils import sort, add_padding, get_motif_marks, print_progress_bar
 
+
 def _right_pad_local(seq: List[str]) -> List[str]:
     clean: List[str] = []
     max_len = 0
@@ -251,22 +252,24 @@ class TandemRepeatVizWorker:
 
         return sorted_sample_ids, aligned_trs
 
-# -------------------------
-# Tiny demo / self-check
-# -------------------------
 if __name__ == "__main__":
     worker = TandemRepeatVizWorker()
-    tr_id = "TEST_TR"
-    sample_ids = ["s1", "s2", "s3"]
+    tr_id = "VariantMotif2"
+    sample_ids = [f"Allele_{i+1}" for i in range(10)]
     tr_sequences = [
-        "ACCTTGACCTTGACCTTC",
-        "ACCTTGACCTTCACCTTC",
-        "ACCTTCACCTTGACCTTC",
+        "CAGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCG",
+        "CAGGGCGCCGGGCGCTGGGCG",
+        "CAGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCGCCGGGCGCCGGGCGCCGTGCGCCGGGCG",
+        "CAGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCG",
+        "CTGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCGCCGGGCGCCGGGCGCCGTGCGCCGGGCGCCGGGCG",
+        "CTGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCGCCGGGCGCCGGGCGCCGTGCGCCGGGCGCCGGGCG",
+        "CTGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCG",
+        "CTGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCGCCGGGCGCCGGGCGCCGGGCGGCGTGCGCCGGGCGCCGGGCGCCGGGCG",
+        "CTGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCG",
+        "CTGGGCGCCGGGCGCCGGGCGCTGGGCGCCGGGCGCCGGGCGCCGGGCGCCGGGCGCCGTGCGCCGGGCGCCGGGCGCCGGGCG",
     ]
-    motifs = ["ACCTTG", "ACCTTC"]
+    motifs = ["CCGGGCG"]
 
-    # Ensure the output folder exists BEFORE running (Codon has no makedirs):
-    #   mkdir -p outputs
     ids_out, aln_out = worker.generate_trdata(
         tr_id=tr_id,
         sample_ids=sample_ids,
@@ -275,7 +278,8 @@ if __name__ == "__main__":
         output_dir="./outputs",
         verbose=True
     )
+
     print(ids_out)
     for row in aln_out:
         print(row)
-    print("Now run:  python pyviz/viz_trplot.py")
+    print("Now run: python pyviz/viz_trplot.py outputs/VariantMotif2.aligned.txt outputs/VariantMotif2_motif_map.txt")

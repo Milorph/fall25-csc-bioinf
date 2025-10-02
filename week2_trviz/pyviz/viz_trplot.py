@@ -1,5 +1,5 @@
 import sys
-from trviz.visualizer import TandemRepeatVisualizer
+from week2_trviz.pyviz.visualizer import TandemRepeatVisualizer
 
 def plot_from_txt():
     # allow filenames from CLI args
@@ -21,14 +21,17 @@ def plot_from_txt():
             motif, sym, count = line.strip().split("\t")
             symbol_to_motif[sym] = motif
 
+    print(f"Loaded {len(ids)} sequences, {len(set(symbol_to_motif.values()))} motifs")
+    print(f"Writing plot to {out}")
+
     viz = TandemRepeatVisualizer()
     viz.trplot(
         rows,
         sample_ids=ids,
         symbol_to_motif=symbol_to_motif,
-        output_name=out
+        output_name=out,
+        color_palette="tab20"  # safe arg
     )
-    print(f"Plot saved to {out}")
 
 if __name__ == "__main__":
     plot_from_txt()

@@ -1,4 +1,4 @@
-from decomposer import Decomposer
+from ..decomposer import Decomposer
 
 @test
 def test_refine():

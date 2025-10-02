@@ -1,4 +1,4 @@
-from main import TandemRepeatVizWorker
+from ..main import TandemRepeatVizWorker
 
 @test
 def test_trviz_worker_pipeline():
