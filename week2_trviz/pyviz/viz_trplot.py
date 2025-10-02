@@ -1,5 +1,5 @@
 import sys
-from week2_trviz.pyviz.visualizer import TandemRepeatVisualizer
+from visualizer import TandemRepeatVisualizer
 
 def plot_from_txt():
     # allow filenames from CLI args
