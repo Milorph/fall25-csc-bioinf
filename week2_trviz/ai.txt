@@ -1,0 +1,36 @@
+How should I start on porting this "github link" to codon. I was told to do these 4 file:
+
+What is Biopython?
+
+Which is easier to convert to Codon: TRviz or Biopython?
+
+Why does Codon give errors when I import Biopython modules?
+
+How do I handle Codon’s Bio module incompatibilities?
+
+Why is Codon running both Python and Codon code inside my test file?
+
+How do I set up CODON_PYTHON so Codon can find my Python library?
+
+How do I run the original Python TRviz code?
+
+Why does main.py run but produce no output?
+
+Should I run run_trviz.py or main.py to plot?
+
+Why does TRviz say “No aligned VNTRs in …alignment_output.fa”?
+
+How do I connect my Codon implementation with the Python visualizer (viz_trplot.py)?
+
+Why do I only see a very simple plot, not an info-dense one?
+
+How do I generate more complicated sequences for testing Codon TRviz?
+
+What do I need to run in CI to test Codon (e.g., decomposer, refinement, trviz worker)?
+
+Why does trviz_test.codon fail because it can’t open test_motif_map.txt?
+
+How can I run the visualization pipeline with my Codon files instead of the Python package?
+
+Can you write me a job in evaluate.sh that runs my test files in codon_impl/tests?
+
