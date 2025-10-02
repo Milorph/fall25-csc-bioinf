@@ -79,10 +79,12 @@ jobs:
       - name: Run Codon tests
         working-directory: week2_trviz/codon_impl/tests
         run: |
+          mkdir -p ../outputs
           for f in *_test.codon; do
             echo "▶ Running $f"
             codon run "$f"
           done
+
 
       - name: Run Codon main to generate outputs
         working-directory: week2_trviz/codon_impl
