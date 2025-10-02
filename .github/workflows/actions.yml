@@ -87,16 +87,3 @@ jobs:
           done
 
 
-
-      - name: Run Codon main to generate outputs to visualize
-        working-directory: week2_trviz/codon_impl
-        run: |
-          mkdir -p ../outputs
-          codon run main.codon
-
-      - name: Run visualization
-        working-directory: week2_trviz
-        run: |
-          python pyviz/viz_trplot.py outputs/TEST_TR.aligned.txt outputs/TEST_TR_motif_map.txt
-          ls -lh outputs
-
