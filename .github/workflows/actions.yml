@@ -76,7 +76,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install matplotlib numpy
 
-      - name: Run Codon tests
+      - name: Week 2 Trviz Codon Tests
         working-directory: week2_trviz/codon_impl/tests
         run: |
           mkdir -p ../outputs
@@ -88,7 +88,7 @@ jobs:
 
 
 
-      - name: Run Codon main to generate outputs
+      - name: Run Codon main to generate outputs to visualize
         working-directory: week2_trviz/codon_impl
         run: |
           mkdir -p ../outputs
