@@ -76,14 +76,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest matplotlib distinctipy numpy
 
-      - name: Week 2 Trviz Codon Tests
-        working-directory: week2_trviz/codon_impl/tests
+      - name: Run evaluate.sh
+        working-directory: week2_trviz
         run: |
-          mkdir -p ../outputs
-          mkdir -p ./outputs
-          for f in *_test.codon; do
-            echo "▶ Running $f"
-            codon run "$f"
-          done
+          chmod +x evaluate.sh
+          ./evaluate.sh
+
 
 
