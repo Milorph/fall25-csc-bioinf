@@ -1,0 +1,12 @@
+model used: gpt-5
+
+prompts i asked:
+- convert the biotite tree and treenode code to codon and make it fully type safe
+- explain the optional[nonetype] vs optional[list[str]] type error in codon
+- write an evaluate.sh script that builds and runs codon and python and prints a runtime table
+- fix the libpython.so missing error in github actions
+- add a week 3 job to the existing github actions yaml file while keeping week 1 and week 2
+- make report.md and ai.txt files for submission
+
+I also used the prompts given by the professor about making the model a Codon expert.
+I couldn't really tell if the model was taking that prompt into account or ignoring it.
