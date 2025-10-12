@@ -105,13 +105,22 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install find_libpython numpy matplotlib
+          pip install find_libpython numpy matplotlib biotite
+
+      - name: Configure Codon Python bridge
+        run: |
+          export CODON_PYTHON=$(find_libpython)
+          echo "CODON_PYTHON=$CODON_PYTHON" >> $GITHUB_ENV
+          echo "✅ Found Python shared library at $CODON_PYTHON"
 
       - name: Run evaluate.sh
         working-directory: week3
+        env:
+          CODON_PYTHON: ${{ env.CODON_PYTHON }}
         run: |
           chmod +x evaluate.sh
           ./evaluate.sh
+
 
 
 
