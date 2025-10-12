@@ -1,0 +1,135 @@
+# Codon-compatible phylogenetic algorithm tests (stand-alone, no Python interop)
+
+import numpy as np
+from numpy import ndarray, zeros, float32, int32
+from typing import List
+
+from tree import Tree, TreeNode
+from upgma import upgma
+from nj import neighbor_joining
+
+
+def get_distances() -> ndarray:
+    """
+    Read integer matrix from ../data/distances.txt and return ndarray[int32].
+    Matches your classmate’s approach (manual parsing).
+    """
+    distances_list: List[List[int]] = []
+    try:
+        f = open("../data/distances.txt", "r")
+        for line in f:
+            s = line.strip()
+            if s != "":
+                row: List[int] = [int(x) for x in s.split()]
+                distances_list.append(row)
+        f.close()
+    except Exception:
+        raise IOError("Could not read ../data/distances.txt")
+
+    n = len(distances_list)
+    m = len(distances_list[0]) if n > 0 else 0
+    result = zeros((n, m), dtype=int32)
+    for i in range(n):
+        for j in range(m):
+            result[i, j] = int32(distances_list[i][j])
+    return result
+
+
+def get_tree(distances: ndarray) -> Tree:
+    return upgma(distances)
+
+
+def get_upgma_newick() -> str:
+    """Load Newick string from ../data/newick_upgma.txt."""
+    try:
+        f = open("../data/newick_upgma.txt", "r")
+        text = f.read().strip()
+        f.close()
+        return text
+    except Exception:
+        raise IOError("Could not read ../data/newick_upgma.txt")
+
+
+def test_upgma(tree: Tree, upgma_newick: str) -> None:
+    """Compare results of upgma() with DendroUPGMA reference."""
+    ref_tree = Tree.from_newick(upgma_newick)
+    n = len(tree)
+    for i in range(n):
+        for j in range(n):
+            td = tree.get_distance(i, j)
+            rd = ref_tree.get_distance(i, j)
+            if abs(td - rd) >= 1e-3:
+                raise AssertionError(f"Distance mismatch at ({i},{j}): {td} vs {rd}")
+            tt = tree.get_distance(i, j, topological=True)
+            rt = ref_tree.get_distance(i, j, topological=True)
+            if tt != rt:
+                raise AssertionError(f"Topological mismatch at ({i},{j}): {tt} vs {rt}")
+
+
+def test_neighbor_joining() -> None:
+    """Compare neighbor_joining() output to a known reference tree."""
+    dist = zeros((6, 6), dtype=float32)
+    vals = [
+        [0, 5, 4, 7, 6, 8],
+        [5, 0, 7, 10, 9, 11],
+        [4, 7, 0, 7, 6, 8],
+        [7, 10, 7, 0, 5, 9],
+        [6, 9, 6, 5, 0, 8],
+        [8, 11, 8, 9, 8, 0],
+    ]
+    for i in range(6):
+        for j in range(6):
+            dist[i, j] = float32(vals[i][j])
+
+    ref_tree = Tree(
+        TreeNode(
+            [
+                TreeNode(
+                    [
+                        TreeNode([TreeNode(index=0), TreeNode(index=1)], [1.0, 4.0]),
+                        TreeNode(index=2),
+                    ],
+                    [1.0, 2.0],
+                ),
+                TreeNode([TreeNode(index=3), TreeNode(index=4)], [3.0, 2.0]),
+                TreeNode(index=5),
+            ],
+            [1.0, 1.0, 5.0],
+        )
+    )
+    test_tree = neighbor_joining(dist)
+    if not (test_tree == ref_tree):
+        raise AssertionError("Neighbor-joining tree does not match reference")
+
+
+def test_distances(tree: Tree) -> None:
+    """Verify equal root distances and selected topological distances."""
+    base_dist = tree.root.distance_to(tree.leaves[0])
+    for leaf in tree.leaves:
+        d = leaf.distance_to(tree.root)
+        if d != base_dist:
+            raise AssertionError(f"Distance to root unequal: {d} vs {base_dist}")
+
+    topo_1 = tree.get_distance(0, 19, True)
+    if topo_1 != 9.0:
+        raise AssertionError(f"Topological distance (0,19) should be 9, got {topo_1}")
+    topo_2 = tree.get_distance(4, 2, True)
+    if topo_2 != 10.0:
+        raise AssertionError(f"Topological distance (4,2) should be 10, got {topo_2}")
+
+
+def main() -> None:
+    import time
+    distances_data = get_distances()
+    upgma_newick_data = get_upgma_newick()
+    tree_data = upgma(distances_data)
+    start = time.time()
+    test_distances(tree_data)
+    test_neighbor_joining()
+    test_upgma(tree_data, upgma_newick_data)
+    elapsed = (time.time() - start) * 1000.0
+    print(f"codon         {int(elapsed)}ms")
+
+
+if __name__ == "__main__":
+    main()

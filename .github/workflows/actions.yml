@@ -81,6 +81,38 @@ jobs:
         run: |
           chmod +x evaluate.sh
           ./evaluate.sh
+  week3-tests:
+    name: Week 3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Codon
+        run: |
+          mkdir -p ${HOME}/.codon
+          curl -L https://github.com/exaloop/codon/releases/download/v0.19.3/codon-linux-x86_64.tar.gz \
+            | tar zxvf - --strip-components=1 -C ${HOME}/.codon
+          curl -L https://github.com/exaloop/seq/releases/download/v0.11.5/seq-linux-x86_64.tar.gz \
+            | tar zxvf - -C ${HOME}/.codon/lib/codon/plugins
+          echo "$HOME/.codon/bin" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install find_libpython numpy matplotlib
+
+      - name: Run evaluate.sh
+        working-directory: week3
+        run: |
+          chmod +x evaluate.sh
+          ./evaluate.sh
+
 
 
 
