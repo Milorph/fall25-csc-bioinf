@@ -105,7 +105,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install find_libpython numpy matplotlib biotite
+          pip install find_libpython numpy matplotlib biotite pytest
 
       - name: Configure Codon Python bridge
         run: |
@@ -120,6 +120,7 @@ jobs:
         run: |
           chmod +x evaluate.sh
           ./evaluate.sh
+
 
 
 
