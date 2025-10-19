@@ -1,0 +1,152 @@
+import sys
+from typing import List
+
+MATCH: int = 3
+MISMATCH: int = -3
+GAP: int = -2
+GAP_OPEN: int = -5
+GAP_EXTEND: int = -1
+
+
+def read_first_fasta(path: str) -> str:
+    seq: str = ""
+    for line in open(path):
+        if line.startswith(">") or line.strip() == "":
+            continue
+        seq += line.strip()
+    return seq
+
+
+def score(a: str, b: str) -> int:
+    return MATCH if a == b else MISMATCH
+
+
+# ---------- Global ----------
+def global_align(A: str, B: str) -> int:
+    n: int = len(A)
+    m: int = len(B)
+    dp: List[List[int]] = [[0 for _ in range(m + 1)] for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        dp[i][0] = i * GAP
+    for j in range(1, m + 1):
+        dp[0][j] = j * GAP
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            s: int = score(A[i - 1], B[j - 1])
+            dp[i][j] = max(
+                dp[i - 1][j - 1] + s,
+                dp[i - 1][j] + GAP,
+                dp[i][j - 1] + GAP,
+            )
+    return dp[n][m]
+
+
+# ---------- Local ----------
+def local_align(A: str, B: str) -> int:
+    n: int = len(A)
+    m: int = len(B)
+    dp: List[List[int]] = [[0 for _ in range(m + 1)] for _ in range(n + 1)]
+    best: int = 0
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            s: int = score(A[i - 1], B[j - 1])
+            dp[i][j] = max(
+                0,
+                dp[i - 1][j - 1] + s,
+                dp[i - 1][j] + GAP,
+                dp[i][j - 1] + GAP,
+            )
+            if dp[i][j] > best:
+                best = dp[i][j]
+    return best
+
+
+# ---------- Semi-global ----------
+def semi_global_align(A: str, B: str) -> int:
+    n: int = len(A)
+    m: int = len(B)
+    dp: List[List[int]] = [[0 for _ in range(m + 1)] for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            s: int = score(A[i - 1], B[j - 1])
+            dp[i][j] = max(
+                dp[i - 1][j - 1] + s,
+                dp[i - 1][j] + GAP,
+                dp[i][j - 1] + GAP,
+            )
+    max_row: int = max(dp[n])
+    max_col: int = max(row[m] for row in dp)
+    return max(max_row, max_col)
+
+
+# ---------- Affine global ----------
+def affine_global_align(A: str, B: str) -> int:
+    n: int = len(A)
+    m: int = len(B)
+    NEG_INF: int = -1000000000
+
+    M: List[List[int]] = [[0 for _ in range(m + 1)] for _ in range(n + 1)]
+    X: List[List[int]] = [[NEG_INF for _ in range(m + 1)] for _ in range(n + 1)]
+    Y: List[List[int]] = [[NEG_INF for _ in range(m + 1)] for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        M[i][0] = NEG_INF
+        X[i][0] = GAP_OPEN + (i - 1) * GAP_EXTEND
+        Y[i][0] = NEG_INF
+    for j in range(1, m + 1):
+        M[0][j] = NEG_INF
+        X[0][j] = NEG_INF
+        Y[0][j] = GAP_OPEN + (j - 1) * GAP_EXTEND
+
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            s: int = score(A[i - 1], B[j - 1])
+            X[i][j] = max(X[i - 1][j] + GAP_EXTEND, M[i - 1][j] + GAP_OPEN + GAP_EXTEND)
+            Y[i][j] = max(Y[i][j - 1] + GAP_EXTEND, M[i][j - 1] + GAP_OPEN + GAP_EXTEND)
+            M[i][j] = max(M[i - 1][j - 1] + s, X[i][j], Y[i][j])
+
+    return M[n][m]
+
+
+# ---------- CLI ----------
+def main():
+    method: str = ""
+    path_a: str = ""
+    path_b: str = ""
+
+    i: int = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "--method":
+            method = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == "--a":
+            path_a = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == "--b":
+            path_b = sys.argv[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    if method == "" or path_a == "" or path_b == "":
+        print("Usage: aligners --method <global|local|semi-global|affine-global> --a <file> --b <file>")
+        sys.exit(1)
+
+    A: str = read_first_fasta(path_a)
+    B: str = read_first_fasta(path_b)
+
+    if method == "global":
+        print(global_align(A, B))
+    elif method == "local":
+        print(local_align(A, B))
+    elif method == "semi-global":
+        print(semi_global_align(A, B))
+    elif method == "affine-global":
+        print(affine_global_align(A, B))
+    else:
+        print("Invalid method")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
