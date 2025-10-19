@@ -152,7 +152,7 @@ jobs:
           echo "CODON_PYTHON=$CODON_PYTHON" >> $GITHUB_ENV
 
       - name: Run Week 4 evaluation
-        working-directory: week4    # <-- 👈 KEY FIX HERE
+        working-directory: week4 
         run: |
           chmod +x evaluate.sh
           ./evaluate.sh
