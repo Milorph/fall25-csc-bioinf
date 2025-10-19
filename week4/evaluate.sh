@@ -1,84 +1,73 @@
 #!/usr/bin/env bash
 set -e
 
-# === Config ===
-PY=python3
-CODON=codon
-DATA_DIR="data"
-ALIGNER_CODON="aligners.codon"
-ALIGNER_PY="aligners.py"
-CHECKPOINT_FILE=".large_checkpoint"
+echo "========== Week 4 – Sequence Alignment Evaluation =========="
 
-# === Helper: run one test ===
-run_test() {
-  local lang=$1
-  local method=$2
-  local a=$3
-  local b=$4
-  local start end runtime result
+PYTHON_ALIGNER="week4/aligners.py"
+CODON_ALIGNER="week4/aligners.codon"
+DATA_DIR="week4/data"
 
-  start=$(date +%s%3N)
-  if [ "$lang" = "python" ]; then
-    result=$($PY $ALIGNER_PY --method $method --a $a --b $b)
-  else
-    result=$($CODON run $ALIGNER_CODON -- --method $method --a $a --b $b)
-  fi
-  end=$(date +%s%3N)
-  runtime=$((end - start))
-  printf "  %-14s %-8s %-8s %6sms\n" "$method" "$lang" "$result" "$runtime"
+MT_HUMAN="$DATA_DIR/MT-human.fa"
+MT_ORANG="$DATA_DIR/MT-orang.fa"
+
+Q_FILES=($DATA_DIR/q1.fa $DATA_DIR/q2.fa $DATA_DIR/q3.fa $DATA_DIR/q4.fa $DATA_DIR/q5.fa)
+T_FILES=($DATA_DIR/t1.fa $DATA_DIR/t2.fa $DATA_DIR/t3.fa $DATA_DIR/t4.fa $DATA_DIR/t5.fa)
+
+METHODS=("global" "local" "semi-global" "affine-global")
+
+printf "%-15s %-8s %-8s %-10s\n" "Method" "Lang" "Score" "Runtime"
+echo "-----------------------------------------------"
+
+run_and_time() {
+    local cmd="$1"
+    local start=$(date +%s%3N)
+    local result
+    result=$(eval "$cmd")
+    local end=$(date +%s%3N)
+    local runtime=$((end - start))
+    echo "$result $runtime"
 }
 
+# === SHORT SEQUENCES ===
 echo
 echo "========== SHORT SEQUENCES (q1-t1 through q5-t5) =========="
-echo "Method          Lang     Score   Time"
-echo "---------------------------------------"
 
-for i in 1 2 3 4 5; do
-  echo "--- q$i vs t$i ---"
-  for method in global local semi-global affine-global; do
-    run_test python $method $DATA_DIR/q$i.fa $DATA_DIR/t$i.fa
-    run_test codon  $method $DATA_DIR/q$i.fa $DATA_DIR/t$i.fa
-  done
-  echo
-done
-
-echo "========== LONG SEQUENCES (MT-human vs MT-orang) =========="
-echo "Running both Python and Codon full tests..."
-echo
-
-methods=("global" "local" "semi-global" "affine-global")
-
-if [ -f "$CHECKPOINT_FILE" ]; then
-  last_done=$(cat "$CHECKPOINT_FILE")
-else
-  last_done=""
-fi
-
-for method in "${methods[@]}"; do
-  if [ "$last_done" = "$method" ]; then
-    skip=1
-  fi
-  if [ -z "$skip" ]; then
-    echo "--- $method ---"
-    # Python
-    start=$(date +%s%3N)
-    py_res=$($PY $ALIGNER_PY --method $method --a $DATA_DIR/MT-human.fa --b $DATA_DIR/MT-orang.fa)
-    end=$(date +%s%3N)
-    runtime=$((end - start))
-    printf "  %-14s %-8s %-8s %6sms\n" "$method" "python" "$py_res" "$runtime"
-
-    # Codon
-    start=$(date +%s%3N)
-    result=$($CODON run $ALIGNER_CODON -- --method $method --a $DATA_DIR/MT-human.fa --b $DATA_DIR/MT-orang.fa)
-    end=$(date +%s%3N)
-    runtime=$((end - start))
-    printf "  %-14s %-8s %-8s %6sms\n" "$method" "codon" "$result" "$runtime"
-
-    echo "$method" > "$CHECKPOINT_FILE"
+for i in {0..4}; do
+    Q=${Q_FILES[$i]}
+    T=${T_FILES[$i]}
     echo
-  fi
+    echo "--- $(basename $Q .fa) vs $(basename $T .fa) ---"
+    for M in "${METHODS[@]}"; do
+        for L in "python" "codon"; do
+            if [ "$L" = "python" ]; then
+                CMD="python3 $PYTHON_ALIGNER --method $M --a $Q --b $T"
+            else
+                CMD="codon run $CODON_ALIGNER -- --method $M --a $Q --b $T"
+            fi
+            read -r SCORE RUNTIME <<<"$(run_and_time "$CMD")"
+            printf "  %-15s %-8s %-8s %s\n" "$M" "$L" "$SCORE" "${RUNTIME}ms"
+        done
+    done
 done
 
-echo "✅ Finished all sequence alignment tests."
+# === LONG SEQUENCES ===
+echo
+echo "========== LONG SEQUENCES (MT-human vs MT-orang) =========="
+
+for M in "${METHODS[@]}"; do
+    echo
+    echo "--- $M ---"
+    for L in "python" "codon"; do
+        if [ "$L" = "python" ]; then
+            CMD="python3 $PYTHON_ALIGNER --method $M --a $MT_HUMAN --b $MT_ORANG"
+        else
+            CMD="codon run $CODON_ALIGNER -- --method $M --a $MT_HUMAN --b $MT_ORANG"
+        fi
+        read -r SCORE RUNTIME <<<"$(run_and_time "$CMD")"
+        printf "  %-15s %-8s %-8s %s\n" "$M" "$L" "$SCORE" "${RUNTIME}ms"
+    done
+done
+
+echo
+echo "✅ Finished all alignment tests."
 echo "========================================"
-echo "All tests finished."

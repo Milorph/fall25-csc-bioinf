@@ -1,16 +1,20 @@
+#!/usr/bin/env python3
 import argparse
+import numpy as np
 
-# -------------------- Scoring constants --------------------
+# =====================================================
+# Scoring constants
+# =====================================================
 MATCH = 3
 MISMATCH = -3
 GAP = -2
-
-# Affine gap penalties (used only in affine global)
 GAP_OPEN = -5
 GAP_EXTEND = -1
 
 
-# -------------------- FASTA reader --------------------
+# =====================================================
+# FASTA Reader
+# =====================================================
 def read_first_fasta(path: str) -> str:
     seq = []
     with open(path) as f:
@@ -22,96 +26,104 @@ def read_first_fasta(path: str) -> str:
     return "".join(seq)
 
 
-# -------------------- Scoring helper --------------------
-def score(a: str, b: str) -> int:
-    return MATCH if a == b else MISMATCH
+# =====================================================
+# 1. Global Alignment (Needleman–Wunsch)
+# =====================================================
+def global_align(a: str, b: str) -> int:
+    n, m = len(a), len(b)
+    F = np.zeros((n + 1, m + 1), dtype=int)
 
+    # Initialize
+    F[0, 1:] = np.arange(1, m + 1) * GAP
+    F[1:, 0] = np.arange(1, n + 1) * GAP
 
-# -------------------- Global alignment --------------------
-def global_align(A: str, B: str) -> int:
-    n, m = len(A), len(B)
-    dp = [[0] * (m + 1) for _ in range(n + 1)]
-    for i in range(1, n + 1):
-        dp[i][0] = i * GAP
-    for j in range(1, m + 1):
-        dp[0][j] = j * GAP
+    # DP fill
     for i in range(1, n + 1):
         for j in range(1, m + 1):
-            dp[i][j] = max(
-                dp[i - 1][j - 1] + score(A[i - 1], B[j - 1]),
-                dp[i - 1][j] + GAP,
-                dp[i][j - 1] + GAP,
-            )
-    return dp[n][m]
+            diag = F[i - 1, j - 1] + (MATCH if a[i - 1] == b[j - 1] else MISMATCH)
+            up = F[i - 1, j] + GAP
+            left = F[i, j - 1] + GAP
+            F[i, j] = max(diag, up, left)
+
+    return int(F[n, m])
 
 
-# -------------------- Local alignment --------------------
-def local_align(A: str, B: str) -> int:
-    n, m = len(A), len(B)
-    dp = [[0] * (m + 1) for _ in range(n + 1)]
+# =====================================================
+# 2. Local Alignment (Smith–Waterman)
+# =====================================================
+def local_align(a: str, b: str) -> int:
+    n, m = len(a), len(b)
+    F = np.zeros((n + 1, m + 1), dtype=int)
     best = 0
+
     for i in range(1, n + 1):
         for j in range(1, m + 1):
-            dp[i][j] = max(
-                0,
-                dp[i - 1][j - 1] + score(A[i - 1], B[j - 1]),
-                dp[i - 1][j] + GAP,
-                dp[i][j - 1] + GAP,
-            )
-            best = max(best, dp[i][j])
-    return best
+            diag = F[i - 1, j - 1] + (MATCH if a[i - 1] == b[j - 1] else MISMATCH)
+            up = F[i - 1, j] + GAP
+            left = F[i, j - 1] + GAP
+            F[i, j] = max(0, diag, up, left)
+            if F[i, j] > best:
+                best = F[i, j]
+
+    return int(best)
 
 
-# -------------------- Semi-global (fitting) alignment --------------------
-def semi_global_align(A: str, B: str) -> int:
-    n, m = len(A), len(B)
-    dp = [[0] * (m + 1) for _ in range(n + 1)]
+# =====================================================
+# 3. Semi-global (Fitting) Alignment
+# =====================================================
+def semi_global_align(a: str, b: str) -> int:
+    n, m = len(a), len(b)
+    F = np.zeros((n + 1, m + 1), dtype=int)
+
+    # Initialize: query penalized, target free at start
+    F[1:, 0] = np.arange(1, n + 1) * GAP
+    F[0, :] = 0
+
     for i in range(1, n + 1):
         for j in range(1, m + 1):
-            dp[i][j] = max(
-                dp[i - 1][j - 1] + score(A[i - 1], B[j - 1]),
-                dp[i - 1][j] + GAP,
-                dp[i][j - 1] + GAP,
-            )
-    # best at last row or last column
-    return max(max(dp[n]), max(row[m] for row in dp))
+            diag = F[i - 1, j - 1] + (MATCH if a[i - 1] == b[j - 1] else MISMATCH)
+            up = F[i - 1, j] + GAP
+            left = F[i, j - 1] + GAP
+            F[i, j] = max(diag, up, left)
+
+    # Best alignment must end at end of query (row n)
+    return int(np.max(F[n, :]))
 
 
-# -------------------- Affine gap global alignment --------------------
-def affine_global_align(A: str, B: str) -> int:
-    n, m = len(A), len(B)
+# =====================================================
+# 4. Affine Gap Global Alignment
+# =====================================================
+def affine_global_align(a: str, b: str) -> int:
+    n, m = len(a), len(b)
     NEG_INF = -10**9
-    M = [[0] * (m + 1) for _ in range(n + 1)]
-    X = [[NEG_INF] * (m + 1) for _ in range(n + 1)]
-    Y = [[NEG_INF] * (m + 1) for _ in range(n + 1)]
 
-    # Correct initialization
-    M[0][0] = 0
-    X[0][0] = Y[0][0] = NEG_INF
+    M = np.full((n + 1, m + 1), NEG_INF, dtype=int)
+    X = np.full((n + 1, m + 1), NEG_INF, dtype=int)
+    Y = np.full((n + 1, m + 1), NEG_INF, dtype=int)
+
+    M[0, 0] = 0
     for i in range(1, n + 1):
-        X[i][0] = GAP_OPEN + (i - 1) * GAP_EXTEND
-        M[i][0] = NEG_INF
-        Y[i][0] = NEG_INF
+        X[i, 0] = GAP_OPEN + (i - 1) * GAP_EXTEND
     for j in range(1, m + 1):
-        Y[0][j] = GAP_OPEN + (j - 1) * GAP_EXTEND
-        M[0][j] = NEG_INF
-        X[0][j] = NEG_INF
+        Y[0, j] = GAP_OPEN + (j - 1) * GAP_EXTEND
 
-    # Fill DP
     for i in range(1, n + 1):
         for j in range(1, m + 1):
-            X[i][j] = max(X[i - 1][j] + GAP_EXTEND, M[i - 1][j] + GAP_OPEN + GAP_EXTEND)
-            Y[i][j] = max(Y[i][j - 1] + GAP_EXTEND, M[i][j - 1] + GAP_OPEN + GAP_EXTEND)
-            M[i][j] = max(
-                M[i - 1][j - 1] + score(A[i - 1], B[j - 1]),
-                X[i][j],
-                Y[i][j],
+            match_score = MATCH if a[i - 1] == b[j - 1] else MISMATCH
+            M[i, j] = max(
+                M[i - 1, j - 1] + match_score,
+                X[i - 1, j - 1] + match_score,
+                Y[i - 1, j - 1] + match_score,
             )
+            X[i, j] = max(M[i - 1, j] + GAP_OPEN + GAP_EXTEND, X[i - 1, j] + GAP_EXTEND)
+            Y[i, j] = max(M[i, j - 1] + GAP_OPEN + GAP_EXTEND, Y[i, j - 1] + GAP_EXTEND)
 
-    return M[n][m]
+    return int(max(M[n, m], X[n, m], Y[n, m]))
 
 
-# -------------------- Main CLI --------------------
+# =====================================================
+# Main CLI
+# =====================================================
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", required=True)
