@@ -1,0 +1,8 @@
+"explain how to implement global, local, semi-global, and affine alignments"  
+"help me fix my affine gap scoring with -5 for open and -1 for extend"  
+"write aligners.py and aligners.codon versions that match exactly"  
+"make evaluate.sh run both python and codon and print results neatly"  
+"add large sequence tests safely without freezing wsl"  
+"make evaluate.sh compatible with GitHub Actions"  
+
+Model: GPT 5
