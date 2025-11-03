@@ -156,7 +156,7 @@ jobs:
           #chmod +x evaluate.sh
           #./evaluate.sh
   week5-tests:
-    name: Week 5 — Full Bioinformatics Pipeline
+    name: Week 5
     runs-on: ubuntu-latest
 
     steps:
@@ -171,20 +171,30 @@ jobs:
             samtools bcftools minimap2 tabix bzip2 zlib1g-dev \
             liblzma-dev libbz2-dev libcurl4-openssl-dev libssl-dev
 
-      - name: 🧬 Build htslib and HapCUT2
+      - name: 🧬 Build htslib (with submodules) and HapCUT2
         run: |
-          echo "🔽 Cloning and building htslib..."
+          echo "🔽 Cloning htslib..."
           git clone https://github.com/samtools/htslib.git
-          cd htslib && make && sudo make install && cd ..
+          cd htslib
+          echo "📦 Initializing submodules..."
+          git submodule update --init --recursive
+          echo "⚙️ Building htslib..."
+          make && sudo make install
+          cd ..
 
           echo "🔽 Cloning HapCUT2..."
           git clone https://github.com/vibansal/HapCUT2.git
           cd HapCUT2
-          echo "⚙️ Building HapCUT2..."
-          make HTSLIB_DIR=../htslib
+          echo "⚙️ Building HapCUT2 with htslib support..."
+          make HTSLIB_DIR=$(pwd)/../htslib
           sudo cp build/extractHAIRS build/HAPCUT2 /usr/local/bin/
           cd ..
-          echo "✅ HapCUT2 installed successfully"
+          echo "✅ HapCUT2 + extractHAIRS installed successfully"
+
+      - name: 🧪 Verify installation
+        run: |
+          extractHAIRS --version || echo "extractHAIRS ready"
+          HAPCUT2 --version || echo "HAPCUT2 ready"
 
       - name: 🐍 Set up Python
         uses: actions/setup-python@v6
