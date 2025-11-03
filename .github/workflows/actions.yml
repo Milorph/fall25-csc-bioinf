@@ -173,9 +173,9 @@ jobs:
           python -m ipykernel install --user --name=python3
 
       - name: ▶️ Run week5 notebook
+        working-directory: week5
         run: |
-          jupyter nbconvert --to notebook --execute week5/week5.ipynb \
-            --output week5/week5_output.ipynb
+          jupyter nbconvert --to notebook --execute week5.ipynb --output week5_output.ipynb
 
       - name: 📤 Upload week5 results
         uses: actions/upload-artifact@v4
@@ -185,6 +185,7 @@ jobs:
             week5/week5_output.ipynb
             week5/week5_data/*.tsv
             week5/week5_data/*.bed
+
 
 
 
