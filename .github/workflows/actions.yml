@@ -160,29 +160,25 @@ jobs:
     name: Week 5
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
+      - name: 🔧 Set up environment for Week 5
         run: |
-          sudo apt-get update
-          sudo apt-get install -y samtools bcftools minimap2 tabix bzip2 curl
-          pip install whatshap jupyter nbconvert
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq samtools bcftools minimap2 tabix bzip2
+          pip install --quiet whatshap nbconvert
 
-      - name: Run week5 notebook
+      - name: ▶️ Run week5 notebook
         run: |
-          jupyter nbconvert --to notebook --execute week5/week5.ipynb --output week5_output.ipynb
+          jupyter nbconvert --to notebook --execute week5/week5.ipynb \
+            --output week5/week5_output.ipynb
 
-      - name: Upload week5 results
+      - name: 📤 Upload week5 results
         uses: actions/upload-artifact@v4
         with:
           name: week5_results
-          path: week5_output.ipynb
+          path: |
+            week5/week5_output.ipynb
+            week5/week5_data/*.tsv
+            week5/week5_data/*.bed
 
 
 
