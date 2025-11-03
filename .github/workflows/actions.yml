@@ -167,15 +167,17 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq samtools bcftools minimap2 tabix bzip2
-          pip install --quiet jupyter whatshap nbconvert ipykernel
+          pip install --quiet jupyter pandas numpy biopython whatshap nbconvert ipykernel
           python -m ipykernel install --user --name=python3
 
       - name: ▶️ Execute week5 notebook
         working-directory: week5
         run: |
+          echo "🚀 Executing week5.ipynb..."
           jupyter nbconvert --to notebook --execute week5.ipynb \
             --output week5_output.ipynb \
-            --ExecutePreprocessor.timeout=1800
+            --ExecutePreprocessor.timeout=1800 || { echo "❌ Notebook execution failed"; exit 1; }
+          echo "✅ Notebook executed successfully."
 
       - name: 📤 Upload results as artifact
         uses: actions/upload-artifact@v4
