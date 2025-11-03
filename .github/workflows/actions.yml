@@ -166,7 +166,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq samtools bcftools minimap2 tabix bzip2
-          pip install --quiet whatshap nbconvert
+          pip install --quiet jupyter whatshap nbconvert ipykernel
+          python -m ipykernel install --user --name=python3
 
       - name: ▶️ Execute week5 notebook
         working-directory: week5
