@@ -169,20 +169,24 @@ jobs:
           sudo apt-get install -y -qq \
             build-essential git wget curl make g++ \
             samtools bcftools minimap2 tabix bzip2 zlib1g-dev \
-            liblzma-dev libbz2-dev libcurl4-openssl-dev
+            liblzma-dev libbz2-dev libcurl4-openssl-dev libssl-dev
 
-      - name: 🧬 Install HapCUT2 and extractHAIRS
+      - name: 🧬 Build htslib and HapCUT2
         run: |
+          echo "🔽 Cloning and building htslib..."
+          git clone https://github.com/samtools/htslib.git
+          cd htslib && make && sudo make install && cd ..
+
           echo "🔽 Cloning HapCUT2..."
           git clone https://github.com/vibansal/HapCUT2.git
           cd HapCUT2
           echo "⚙️ Building HapCUT2..."
-          make
+          make HTSLIB_DIR=../htslib
           sudo cp build/extractHAIRS build/HAPCUT2 /usr/local/bin/
           cd ..
           echo "✅ HapCUT2 installed successfully"
 
-      - name: 🐍 Set up Python environment
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -209,6 +213,7 @@ jobs:
             week5/data/*.tsv
             week5/data/*.bed
             week5/data/*.png
+
 
 
 
