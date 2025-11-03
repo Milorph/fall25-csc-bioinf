@@ -156,6 +156,34 @@ jobs:
         run: |
           chmod +x evaluate.sh
           ./evaluate.sh
+  week5-tests:
+    name: Week 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y samtools bcftools minimap2 tabix bzip2 curl
+          pip install whatshap jupyter nbconvert
+
+      - name: Run week5 notebook
+        run: |
+          jupyter nbconvert --to notebook --execute week5/week5.ipynb --output week5_output.ipynb
+
+      - name: Upload week5 results
+        uses: actions/upload-artifact@v4
+        with:
+          name: week5_results
+          path: week5_output.ipynb
+
 
 
 

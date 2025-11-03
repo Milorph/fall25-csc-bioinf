@@ -1,0 +1,9 @@
+samtools
+bcftools
+minimap2
+tabix
+bzip2
+curl
+whatshap
+jupyter
+nbconvert
