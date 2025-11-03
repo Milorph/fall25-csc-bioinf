@@ -156,49 +156,30 @@ jobs:
           #chmod +x evaluate.sh
           #./evaluate.sh
   week5-tests:
-    name: Run Week 5 Notebook
+    name: Week 5 — Run notebook only
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔧 Set up environment
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            samtools bcftools minimap2 tabix \
-            g++ make git zlib1g-dev libhts-dev libbz2-dev
-          pip install --quiet jupyter pandas numpy biopython whatshap nbconvert ipykernel
-          python -m ipykernel install --user --name=python3
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
-      - name: 🧠 Install HapCUT2
+      - name: 📦 Install dependencies
         run: |
-          git clone https://github.com/vibansal/HapCUT2.git
-          cd HapCUT2 && make
-          sudo cp build/extractHAIRS /usr/local/bin/
-          sudo cp build/HAPCUT2 /usr/local/bin/
-          extractHAIRS --version || echo "✅ extractHAIRS installed"
-          HAPCUT2 --version || echo "✅ HAPCUT2 installed"
+          python -m pip install --upgrade pip
+          pip install jupyter nbconvert ipykernel pandas
 
-      - name: ▶️ Execute week5 notebook
+      - name: ▶️ Run Week 5 notebook
         working-directory: week5
         run: |
           echo "🚀 Executing week5.ipynb..."
           jupyter nbconvert --to notebook --execute week5.ipynb \
             --output week5_output.ipynb \
-            --ExecutePreprocessor.timeout=1800 || { echo "❌ Notebook execution failed"; exit 1; }
-          echo "✅ Notebook executed successfully."
-
-      - name: 📤 Upload results as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: week5_results
-          path: |
-            week5/week5_output.ipynb
-            week5/data/*.tsv
-            week5/data/*.bed
-            week5/data/*.png
+            --ExecutePreprocessor.timeout=1200
 
 
 
