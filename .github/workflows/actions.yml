@@ -159,34 +159,30 @@ jobs:
     name: Week 5
     runs-on: ubuntu-latest
     steps:
-      - name: 🔧 Set up environment
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: 🔧 Set up environment for Week 5
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq samtools bcftools minimap2 tabix bzip2
-          pip install --quiet whatshap nbconvert jupyter
+          pip install --quiet whatshap nbconvert
 
-      - name: ▶️ Run and export notebook
+      - name: ▶️ Execute week5 notebook
+        working-directory: week5
         run: |
-          # Execute the notebook silently
-          jupyter nbconvert --execute --to notebook week5/week5.ipynb --output week5_output.ipynb
-          # Then convert to Markdown for readable plain-text output
-          jupyter nbconvert --to markdown week5/week5_output.ipynb --output week5_output.md
+          jupyter nbconvert --to notebook --execute week5.ipynb \
+            --output week5_output.ipynb
 
-      - name: 🖨️ Show summarized output in log
-        run: |
-          echo "================ Week 5 Notebook Output Summary ================"
-          tail -n 40 week5/week5_output.md || cat week5/week5_output.md
-          echo "==============================================================="
-
-      - name: 📤 Upload artifacts
+      - name: 📤 Upload week5 results
         uses: actions/upload-artifact@v4
         with:
           name: week5_results
           path: |
             week5/week5_output.ipynb
-            week5/week5_output.md
             week5/week5_data/*.tsv
             week5/week5_data/*.bed
+
 
 
 
