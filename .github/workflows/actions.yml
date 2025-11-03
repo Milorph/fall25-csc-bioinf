@@ -156,30 +156,60 @@ jobs:
           #chmod +x evaluate.sh
           #./evaluate.sh
   week5-tests:
-    name: Week 5 — Run notebook only
+    name: Week 5 — Full Bioinformatics Pipeline
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
+      - name: 🔧 Install system tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential git wget curl make g++ \
+            samtools bcftools minimap2 tabix bzip2 zlib1g-dev \
+            liblzma-dev libbz2-dev libcurl4-openssl-dev
+
+      - name: 🧬 Install HapCUT2 and extractHAIRS
+        run: |
+          echo "🔽 Cloning HapCUT2..."
+          git clone https://github.com/vibansal/HapCUT2.git
+          cd HapCUT2
+          echo "⚙️ Building HapCUT2..."
+          make
+          sudo cp build/extractHAIRS build/HAPCUT2 /usr/local/bin/
+          cd ..
+          echo "✅ HapCUT2 installed successfully"
+
+      - name: 🐍 Set up Python environment
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install jupyter nbconvert ipykernel pandas
+          pip install jupyter nbconvert ipykernel pandas whatshap
 
-      - name: ▶️ Run Week 5 notebook
+      - name: ▶️ Execute Week 5 Notebook
         working-directory: week5
         run: |
           echo "🚀 Executing week5.ipynb..."
           jupyter nbconvert --to notebook --execute week5.ipynb \
             --output week5_output.ipynb \
-            --ExecutePreprocessor.timeout=1200
+            --ExecutePreprocessor.timeout=1800
+
+      - name: 📤 Upload Results as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: week5_results
+          path: |
+            week5/week5_output.ipynb
+            week5/data/*.tsv
+            week5/data/*.bed
+            week5/data/*.png
+
 
 
 
