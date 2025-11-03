@@ -1,0 +1,18 @@
+“How do I structure my Jupyter notebook for the Week 5 pipeline so it runs cleanly in order?”
+
+“Help me write a bash cell to download the FASTQ files and extract them correctly.”
+
+“What minimap2 parameters should I use for PacBio vs Illumina reads?”
+
+“My WhatsHap step fails with a no reads found error, how do I fix that?”
+
+“Show me how to write a GitHub Actions step that installs bioinformatics tools and runs nbconvert.”
+
+“How do I properly curl from my professor’s GitHub repo and decompress .bz2 files?”
+
+“Help debug the bcftools call command; it keeps outputting empty VCFs.”
+
+“Give me a working example of automating variant calling and phasing in a reproducible Jupyter notebook.”
+
+Model:
+GPT 5
