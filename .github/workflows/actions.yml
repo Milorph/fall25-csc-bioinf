@@ -166,7 +166,8 @@ jobs:
       - name: 🔧 Set up environment
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq samtools bcftools minimap2 tabix bzip2 g++ make git zlib1g-dev
+          sudo apt-get install -y -qq \
+            samtools bcftools minimap2 tabix bzip2 g++ make git zlib1g-dev libhts-dev
           pip install --quiet jupyter pandas numpy biopython whatshap nbconvert ipykernel
           python -m ipykernel install --user --name=python3
 
@@ -176,8 +177,8 @@ jobs:
           cd HapCUT2 && make
           sudo cp build/extractHAIRS /usr/local/bin/
           sudo cp build/HAPCUT2 /usr/local/bin/
-          extractHAIRS --version || echo "extractHAIRS installed!"
-          HAPCUT2 --version || echo "HAPCUT2 installed!"
+          extractHAIRS --version || echo "✅ extractHAIRS installed"
+          HAPCUT2 --version || echo "✅ HAPCUT2 installed"
 
       - name: ▶️ Execute week5 notebook
         working-directory: week5
