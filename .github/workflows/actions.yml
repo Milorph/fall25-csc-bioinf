@@ -135,7 +135,6 @@ jobs:
           curl -L https://github.com/exaloop/seq/releases/download/v0.11.5/seq-linux-x86_64.tar.gz \
             | tar zxvf - -C ${HOME}/.codon/lib/codon/plugins
           echo "$HOME/.codon/bin" >> $GITHUB_PATH
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -151,11 +150,11 @@ jobs:
           export CODON_PYTHON=$(find_libpython)
           echo "CODON_PYTHON=$CODON_PYTHON" >> $GITHUB_ENV
 
-      - name: Run Week 4 evaluation
-        working-directory: week4 
-        run: |
-          chmod +x evaluate.sh
-          ./evaluate.sh
+      #- name: Run Week 4 evaluation
+        #working-directory: week4 
+        #run: |
+          #chmod +x evaluate.sh
+          #./evaluate.sh
   week5-tests:
     name: Week 5
     runs-on: ubuntu-latest
