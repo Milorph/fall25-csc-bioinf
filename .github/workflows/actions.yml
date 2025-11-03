@@ -167,7 +167,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
-            samtools bcftools minimap2 tabix bzip2 g++ make git zlib1g-dev libhts-dev
+            samtools bcftools minimap2 tabix \
+            g++ make git zlib1g-dev libhts-dev libbz2-dev
           pip install --quiet jupyter pandas numpy biopython whatshap nbconvert ipykernel
           python -m ipykernel install --user --name=python3
 
@@ -198,6 +199,7 @@ jobs:
             week5/data/*.tsv
             week5/data/*.bed
             week5/data/*.png
+
 
 
 
