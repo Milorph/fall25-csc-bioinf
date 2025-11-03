@@ -156,13 +156,14 @@ jobs:
           #chmod +x evaluate.sh
           #./evaluate.sh
   week5-tests:
-    name: Week 5
+    name: Run Week 5 Notebook
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v5
 
-      - name: 🔧 Set up environment for Week 5
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up environment
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq samtools bcftools minimap2 tabix bzip2
@@ -173,16 +174,18 @@ jobs:
         working-directory: week5
         run: |
           jupyter nbconvert --to notebook --execute week5.ipynb \
-            --output week5_output.ipynb
+            --output week5_output.ipynb \
+            --ExecutePreprocessor.timeout=1800
 
-      - name: 📤 Upload week5 results
+      - name: 📤 Upload results as artifact
         uses: actions/upload-artifact@v4
         with:
           name: week5_results
           path: |
             week5/week5_output.ipynb
-            week5/week5_data/*.tsv
-            week5/week5_data/*.bed
+            week5/data/*.tsv
+            week5/data/*.bed
+            week5/data/*.png
 
 
 

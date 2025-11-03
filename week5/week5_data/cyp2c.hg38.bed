@@ -1,3 +1,6 @@
-chr10    94760662    94858282    CYP2C19
-chr10    94936658    94991091    CYP2C9
-chr10    95034773    95088997    CYP2C8
+EOF
+# Chromosome    Start       End         Gene
+chr10           94760000    94840000    CYP2C19
+chr10           94930000    95010000    CYP2C8
+chr10           94940000    95020000    CYP2C9
+EOF
