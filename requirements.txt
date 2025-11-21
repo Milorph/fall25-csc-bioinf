@@ -1,0 +1,10 @@
+scanpy
+celltypist
+mygene
+simpleaf
+alevin-fry
+numpy
+pandas
+scipy
+matplotlib
+jupyter
