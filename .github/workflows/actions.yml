@@ -223,15 +223,44 @@ jobs:
             week5/data/*.tsv
             week5/data/*.bed
             week5/data/*.png
+  week6-tests:
+    name: Week 6
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
 
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
 
+      - name: 🧰 Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential curl
 
+      - name: 📦 Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install jupyter
 
+      - name: ▶️ Run Week 6 Notebook
+        working-directory: week6
+        run: |
+          echo "🚀 Executing week6.ipynb..."
+          jupyter nbconvert --to notebook --execute week6.ipynb \
+            --output week6_output.ipynb \
+            --ExecutePreprocessor.timeout=1800
 
-
-
-
+      - name: 📤 Upload Week 6 Notebook Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: week6_results
+          path: |
+            week6/week6_output.ipynb
 
 
 
