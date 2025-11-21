@@ -228,44 +228,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository (with LFS)
+      - name: Checkout with LFS
         uses: nschloe/action-cached-lfs-checkout@v1
 
-      - name: 🔧 Set up Miniconda
+      - name: Generate LFS file list
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
+
+      - name: Set up Conda for Week 6
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: week6env
-          python-version: '3.11'
-          channels: conda-forge,bioconda
+          python-version: 3.11
+          channels: bioconda,conda-forge
           channel-priority: flexible
 
-      - name: 📦 Install dependencies
+      - name: Install core packages
         shell: bash -l {0}
         run: |
           conda install -y simpleaf
-          conda install -y conda-forge::scanpy
+          conda install -y scanpy
+          conda install -y celltypist
+          conda install -y mygene
           conda install -y python-igraph leidenalg
-          conda install -y celltypist mygene
           conda install -y jupyter nbconvert ipykernel
 
-      - name: 🧹 Ensure clean indexing workspace
+      - name: Add kernel
         shell: bash -l {0}
-        working-directory: week6
-        run: |
-          rm -rf simpleaf_index simpleaf_quant alevin_fry_home workdir.noindex
+        run: python -m ipykernel install --user --name week6env
 
-      - name: ▶️ Execute Week 6 Notebook
+      - name: Execute Week 6 notebook
         shell: bash -l {0}
         working-directory: week6
         run: |
-          echo "🚀 Executing week6.ipynb..."
+          echo "🚀 Running week6.ipynb..."
           jupyter nbconvert --to notebook --execute week6.ipynb \
             --output week6_output.ipynb \
             --ExecutePreprocessor.timeout=7200
-
-      - name: 📤 Upload Week 6 Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: week6_results
-          path: |
-            week6/week6_output.ipynb

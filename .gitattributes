@@ -1,3 +1,0 @@
-toy_ref_read/toy_read_fastq/selected_R1_reads.fastq filter=lfs diff=lfs merge=lfs -text
-toy_ref_read/toy_read_fastq/selected_R2_reads.fastq filter=lfs diff=lfs merge=lfs -text
-toy_ref_read/toy_human_ref/fasta/genome.fa filter=lfs diff=lfs merge=lfs -text
