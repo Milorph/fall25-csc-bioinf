@@ -254,7 +254,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install -y simpleaf
-          conda install -y scanpy
+          conda install -y conda-forge::scanpy
           conda install -y celltypist
           conda install -y mygene
           conda install -y python-igraph leidenalg
